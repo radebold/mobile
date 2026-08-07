@@ -1,7 +1,7 @@
 {
-  "version": "2.7.1",
+  "version": "2.7.2",
   "released": "2026-08-07",
-  "notes": "WhatsApp-Benachrichtigungen funktionieren jetzt auch mit dem vorhandenen ioBroker simple-api Adapter auf Port 8087. Die Verkaufszentrale schreibt die Nachricht in einen ioBroker-Datenpunkt; ein ioBroker-JavaScript leitet sie an open-wa.0 weiter.",
+  "notes": "Korrigiert den WhatsApp-Ausgang auf mqtt.0.whatsapp.outgoing, normalisiert Einzelchat-Empfänger automatisch auf 49...@c.us und sendet an simple-api nur noch das benötigte JSON mit to und text.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -10,7 +10,7 @@
     },
     {
       "path": "functions.php",
-      "blob_sha": "d583b670d8e983849bcf0cc6544b58710409d8a4"
+      "blob_sha": "a9ce29e54e4f51d925048fe990e01b4e93162602"
     },
     {
       "path": "vehicle.php",
@@ -18,7 +18,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "860487ca19cedeaf219ae3caca5e14df61c44f18"
+      "blob_sha": "37c2961c2430f357166156e7ddf1c590eb8d4ce1"
     },
     {
       "path": "assets/app.css",
