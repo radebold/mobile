@@ -28,9 +28,11 @@ $config['mobile_web_url'] = 'http://DEINE-NAS-IP/mobile/';
 
 /*
  * WhatsApp-Benachrichtigung bei neuen mobile.de-Nachrichten.
+ * open-wa erwartet für Einzelchats die Chat-ID im Format 49...@c.us
+ * (ohne führendes +).
  */
 $config['whatsapp_notify_enabled'] = true;
-$config['whatsapp_to'] = '+49XXXXXXXXXXX';
+$config['whatsapp_to'] = '491234567890@c.us';
 $config['openwa_adapter'] = 'open-wa.0';
 
 /*
