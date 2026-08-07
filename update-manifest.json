@@ -1,7 +1,7 @@
 {
-  "version": "2.6.0",
+  "version": "2.6.1",
   "released": "2026-08-07",
-  "notes": "GitHub als zentrale Codebasis, modulares PHP, modernes UI und integrierte Updatefunktion mit Backup und Prüfsummenprüfung.",
+  "notes": "Testupdate der integrierten GitHub-Updatefunktion von 2.6.0 auf 2.6.1.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -18,7 +18,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "e70b4523ae7ffe8aa3cac8ecd1b093fba5a98737"
+      "blob_sha": "6a6a3d8e35c7a98eaeb47d4212cc13d1d8938003"
     },
     {
       "path": "assets/app.css",
