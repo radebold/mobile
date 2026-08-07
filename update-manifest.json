@@ -1,7 +1,7 @@
 {
-  "version": "2.9.0",
+  "version": "2.9.1",
   "released": "2026-08-07",
-  "notes": "WhatsApp-Nachrichten enthalten jetzt Name, Betreff, Nachrichtentext und einen Direktlink zur passenden Unterhaltung. Der automatische Synology-Check prüft zusätzlich auf neue GitHub-Versionen und meldet jede neue Version einmalig per WhatsApp.",
+  "notes": "Testversion zur Prüfung der automatischen WhatsApp-Benachrichtigung bei einer neu verfügbaren Version.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -18,7 +18,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "c8e38b614057b7e417c63fde44726a4143de9da0"
+      "blob_sha": "dedcc7d4335da09214ca036d5fdf9473a45f1682"
     },
     {
       "path": "assets/app.css",
