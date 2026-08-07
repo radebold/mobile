@@ -254,7 +254,7 @@ function installGitHubUpdate($appDir, $currentVersion, $config)
     $prepared = array();
 
     /*
-     * 1. Alle Dateien vollständig herunterladen und per SHA-256 prüfen.
+     * 1. Alle Dateien vollständig herunterladen und per Prüfsumme verifizieren.
      * Erst danach wird eine bestehende Programmdatei verändert.
      */
     foreach ($files as $fileInfo) {
@@ -271,9 +271,13 @@ function installGitHubUpdate($appDir, $currentVersion, $config)
         }
 
         $expectedHash = isset($fileInfo['sha256']) ? strtolower(trim($fileInfo['sha256'])) : '';
+        $expectedBlobSha = isset($fileInfo['blob_sha']) ? strtolower(trim($fileInfo['blob_sha'])) : '';
 
-        if (!preg_match('/^[a-f0-9]{64}$/', $expectedHash)) {
-            $result['error'] = 'Fehlender oder ungültiger SHA-256-Hash für ' . $relativePath . '.';
+        $hasSha256 = preg_match('/^[a-f0-9]{64}$/', $expectedHash);
+        $hasBlobSha = preg_match('/^[a-f0-9]{40}$/', $expectedBlobSha);
+
+        if (!$hasSha256 && !$hasBlobSha) {
+            $result['error'] = 'Fehlende oder ungültige Prüfsumme für ' . $relativePath . '.';
             return $result;
         }
 
@@ -288,11 +292,22 @@ function installGitHubUpdate($appDir, $currentVersion, $config)
             return $result;
         }
 
-        $actualHash = hash('sha256', $http['body']);
+        if ($hasSha256) {
+            $actualHash = hash('sha256', $http['body']);
 
-        if (!hash_equals($expectedHash, $actualHash)) {
-            $result['error'] = 'Prüfsumme von ' . $relativePath . ' stimmt nicht.';
-            return $result;
+            if (!hash_equals($expectedHash, $actualHash)) {
+                $result['error'] = 'SHA-256-Prüfsumme von ' . $relativePath . ' stimmt nicht.';
+                return $result;
+            }
+        } else {
+            /* GitHub Contents API liefert die Git-Blob-ID (SHA-1 über blob <len>\0<content>). */
+            $gitBlobPayload = 'blob ' . strlen($http['body']) . chr(0) . $http['body'];
+            $actualBlobSha = sha1($gitBlobPayload);
+
+            if (!hash_equals($expectedBlobSha, $actualBlobSha)) {
+                $result['error'] = 'GitHub-Blob-Prüfsumme von ' . $relativePath . ' stimmt nicht.';
+                return $result;
+            }
         }
 
         $stagedPath = $stagingDir . '/' . $relativePath;
