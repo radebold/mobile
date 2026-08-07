@@ -3,6 +3,7 @@ _private/config.php
 
 # Laufzeitdaten
 data/status.json
+data/notify-state.json
 data/update-cache.json
 data/update-backups/
 data/update-staging/
