@@ -1,7 +1,7 @@
 {
-  "version": "2.7.2",
+  "version": "2.8.0",
   "released": "2026-08-07",
-  "notes": "Korrigiert den WhatsApp-Ausgang auf mqtt.0.whatsapp.outgoing, normalisiert Einzelchat-Empfänger automatisch auf 49...@c.us und sendet an simple-api nur noch das benötigte JSON mit to und text.",
+  "notes": "WhatsApp-Systemstatus und Test-Button direkt in der Verkaufszentrale. Zeigt den letzten automatischen Check, erkennt einen ausgefallenen Synology-Task und ermöglicht einen Testversand ohne manuelle URL.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -10,7 +10,7 @@
     },
     {
       "path": "functions.php",
-      "blob_sha": "a9ce29e54e4f51d925048fe990e01b4e93162602"
+      "blob_sha": "6fad32546de303a089fc7a554a6e2224e48b544f"
     },
     {
       "path": "vehicle.php",
@@ -18,7 +18,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "37c2961c2430f357166156e7ddf1c590eb8d4ce1"
+      "blob_sha": "834f2629538327723c074ed4c3addca9888f0256"
     },
     {
       "path": "assets/app.css",
@@ -26,7 +26,7 @@
     },
     {
       "path": "assets/app.js",
-      "blob_sha": "e68029d2e9b9275f5e15590b79a8b3e41b8f02b5"
+      "blob_sha": "16e69efb30afa58ab4f64827361387c77674b89c"
     },
     {
       "path": "lib/mail.php",
