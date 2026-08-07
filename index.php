@@ -3,7 +3,7 @@
 /*
  * =========================================================
  * mobile.de Verkaufszentrale
- * Version 2.6.0
+ * Version aus VERSION-Datei
  * PHP 5.6 kompatibel
  *
  * Funktionen:
@@ -24,8 +24,24 @@
 session_start();
 header('Content-Type: text/html; charset=utf-8');
 
+/*
+ * Die Versionsnummer wird bewusst aus VERSION gelesen. So kann der
+ * Self-Updater die Versionsdatei austauschen, ohne dass index.php an
+ * einer zweiten Stelle dieselbe Versionsnummer hart codiert halten muss.
+ */
+$versionFile = __DIR__ . '/VERSION';
+$appVersion = '2.6.0';
+
+if (file_exists($versionFile)) {
+    $versionFromFile = trim(@file_get_contents($versionFile));
+
+    if ($versionFromFile != '') {
+        $appVersion = $versionFromFile;
+    }
+}
+
 if (!defined('MOBILE_APP_VERSION')) {
-    define('MOBILE_APP_VERSION', '2.6.0');
+    define('MOBILE_APP_VERSION', $appVersion);
 }
 
 $configFile = __DIR__ . '/_private/config.php';
@@ -508,6 +524,25 @@ $updateInfo = getGitHubUpdateInfo(
     $config,
     $forceUpdateCheck
 );
+
+/*
+ * Bei einer manuellen Prüfung zeigen wir IMMER sichtbar das Ergebnis.
+ * Damit wirkt der Link „prüfen“ nicht mehr so, als wäre nichts passiert.
+ */
+if ($forceUpdateCheck && $flashMessage == '') {
+    if (!empty($updateInfo['ok'])) {
+        $flashType = 'success';
+
+        if (!empty($updateInfo['available'])) {
+            $flashMessage = 'GitHub geprüft: Version ' . $updateInfo['latest_version'] . ' ist verfügbar.';
+        } else {
+            $flashMessage = 'GitHub geprüft: keine neuere Version. Installiert ist ' . MOBILE_APP_VERSION . '.';
+        }
+    } else {
+        $flashType = 'error';
+        $flashMessage = 'GitHub-Prüfung fehlgeschlagen: ' . $updateInfo['error'];
+    }
+}
 
 if (
     isset($_GET['updated']) &&
