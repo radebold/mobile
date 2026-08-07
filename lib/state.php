@@ -2,6 +2,7 @@
 
 /* Modul: state.php */
 
+
 function getStateFilePath()
 {
     return dirname(__DIR__) . '/data/status.json';
@@ -123,3 +124,4 @@ function getStatusClass($status)
 
     return isset($classes[$status]) ? $classes[$status] : 'status-offen';
 }
+
