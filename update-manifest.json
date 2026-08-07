@@ -1,7 +1,7 @@
 {
-  "version": "2.6.1",
+  "version": "2.6.2",
   "released": "2026-08-07",
-  "notes": "Testupdate der integrierten GitHub-Updatefunktion. Die Versionsanzeige wird jetzt aus VERSION gelesen und eine manuelle GitHub-Prüfung zeigt immer ein sichtbares Ergebnis.",
+  "notes": "Zweiter Test der integrierten GitHub-Updatefunktion von 2.6.1 auf 2.6.2.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -18,7 +18,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "6a6a3d8e35c7a98eaeb47d4212cc13d1d8938003"
+      "blob_sha": "097a15a2af39df14efb57a9212fc648b52746783"
     },
     {
       "path": "assets/app.css",
