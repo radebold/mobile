@@ -1,0 +1,52 @@
+{
+  "version": "2.6.0",
+  "released": "2026-08-07",
+  "notes": "GitHub als zentrale Codebasis, modulares PHP, modernes UI und integrierte Updatefunktion mit Backup und Prüfsummenprüfung.",
+  "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
+  "files": [
+    {
+      "path": "index.php",
+      "blob_sha": "e8f79c138ae211362f7d4d8de7e18b061a3ed7c1"
+    },
+    {
+      "path": "functions.php",
+      "blob_sha": "22d2528c77b5c139b0bfd5d8cf2c3cf0f6ff017e"
+    },
+    {
+      "path": "vehicle.php",
+      "blob_sha": "8c6b64eb3ff99ef410ca8b46bb5031564ccb60ba"
+    },
+    {
+      "path": "VERSION",
+      "blob_sha": "e70b4523ae7ffe8aa3cac8ecd1b093fba5a98737"
+    },
+    {
+      "path": "assets/app.css",
+      "blob_sha": "e968a95adf0472c7011792dee345245d6d1f96ba"
+    },
+    {
+      "path": "assets/app.js",
+      "blob_sha": "e68029d2e9b9275f5e15590b79a8b3e41b8f02b5"
+    },
+    {
+      "path": "lib/mail.php",
+      "blob_sha": "c635ba9fb011645516073bccbb386fadc89c6754"
+    },
+    {
+      "path": "lib/ai.php",
+      "blob_sha": "687a497a0708c4992cb5b768161c4ac643372cb7"
+    },
+    {
+      "path": "lib/gmail.php",
+      "blob_sha": "9d8a689fb3a233d3d02dded17d68572911481480"
+    },
+    {
+      "path": "lib/state.php",
+      "blob_sha": "e5325f822be5d284221808716d1b0b2796aa89de"
+    },
+    {
+      "path": "lib/update.php",
+      "blob_sha": "a43e820de23b99b2ebb4f2825fcf8527363a0d88"
+    }
+  ]
+}
