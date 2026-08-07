@@ -1,7 +1,7 @@
 {
-  "version": "2.6.3",
+  "version": "2.7.0",
   "released": "2026-08-07",
-  "notes": "Dritter Test der integrierten GitHub-Updatefunktion. Ziel ist die Prüfung des kompletten Updatepfads von der Weboberfläche bis zur aktualisierten VERSION-Datei.",
+  "notes": "WhatsApp-Benachrichtigungen für neue mobile.de-Nachrichten über ioBroker REST-API und open-wa.0. Inklusive Deduplizierung, Baseline beim ersten Lauf und Testmodus.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -10,7 +10,7 @@
     },
     {
       "path": "functions.php",
-      "blob_sha": "22d2528c77b5c139b0bfd5d8cf2c3cf0f6ff017e"
+      "blob_sha": "d12e8e3bc596e80789f5696c971d2ff49326d10c"
     },
     {
       "path": "vehicle.php",
@@ -18,7 +18,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "ec1cf33c3f6e22d5833bed6199c520a9ee20a0fa"
+      "blob_sha": "24ba9a38de68d00674ec97b283a967699716b9f4"
     },
     {
       "path": "assets/app.css",
