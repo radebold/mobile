@@ -1,7 +1,7 @@
 {
-  "version": "2.8.0",
+  "version": "2.9.0",
   "released": "2026-08-07",
-  "notes": "WhatsApp-Systemstatus und Test-Button direkt in der Verkaufszentrale. Zeigt den letzten automatischen Check, erkennt einen ausgefallenen Synology-Task und ermöglicht einen Testversand ohne manuelle URL.",
+  "notes": "WhatsApp-Nachrichten enthalten jetzt Name, Betreff, Nachrichtentext und einen Direktlink zur passenden Unterhaltung. Der automatische Synology-Check prüft zusätzlich auf neue GitHub-Versionen und meldet jede neue Version einmalig per WhatsApp.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -10,7 +10,7 @@
     },
     {
       "path": "functions.php",
-      "blob_sha": "6fad32546de303a089fc7a554a6e2224e48b544f"
+      "blob_sha": "f4c5a390a40753281a50e3418609262e01629a65"
     },
     {
       "path": "vehicle.php",
@@ -18,7 +18,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "834f2629538327723c074ed4c3addca9888f0256"
+      "blob_sha": "c8e38b614057b7e417c63fde44726a4143de9da0"
     },
     {
       "path": "assets/app.css",
