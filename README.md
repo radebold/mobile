@@ -11,11 +11,12 @@ Private Verkaufszentrale für mobile.de-/Kleinanzeigen-Anfragen zum VW Sharan.
 - Gesprächsstatus verwalten
 - beantwortete Gespräche archivieren
 - Anfragen ohne weiteres Interesse in Gmail in den Papierkorb verschieben
-- WhatsApp-Benachrichtigung bei neuen Käufernachrichten
+- WhatsApp-Benachrichtigung bei neuen Käufernachrichten inklusive Direktlink zur Unterhaltung
 - WhatsApp-Systemstatus und Test direkt in der Weboberfläche
+- automatische GitHub-Updateprüfung im Scheduler mit einmaligem WhatsApp-Hinweis je neuer Version
 - integriertes Self-Update direkt aus diesem GitHub-Repository
 
-Die Anwendung sendet keine Käuferantwort automatisch. Automatisch versendet werden optional nur interne WhatsApp-Benachrichtigungen über neue Anfragen.
+Die Anwendung sendet keine Käuferantwort automatisch. Automatisch versendet werden optional nur interne WhatsApp-Benachrichtigungen über neue Anfragen und verfügbare Programmupdates.
 
 ## Voraussetzungen
 
@@ -53,6 +54,7 @@ Für die vorhandene ioBroker-Installation wird `simple-api.0` genutzt. Die Verka
 ```php
 $config['whatsapp_notify_enabled'] = true;
 $config['whatsapp_to'] = '491234567890@c.us';
+$config['whatsapp_notify_updates'] = true;
 $config['iobroker_api_mode'] = 'simple-api';
 $config['iobroker_rest_url'] = 'http://DEINE-IOBROKER-IP:8087';
 $config['iobroker_simple_api_state'] = 'mqtt.0.whatsapp.outgoing';
@@ -60,7 +62,9 @@ $config['notify_cron_token'] = 'EIN-LANGES-ZUFAELLIGES-GEHEIMNIS';
 $config['mobile_web_url'] = 'http://DEINE-NAS-IP/mobile/';
 ```
 
-Einzelchat-Empfänger werden zusätzlich automatisch auf das Format `49...@c.us` normalisiert.
+Einzelchat-Empfänger werden automatisch auf das Format `49...@c.us` normalisiert.
+
+Eine neue Käufernachricht enthält in WhatsApp den Namen des Interessenten, Zeitpunkt, Betreff, Nachrichtentext und einen Direktlink auf genau diese Unterhaltung in der Verkaufszentrale.
 
 ### Weboberfläche
 
@@ -75,6 +79,14 @@ Im Synology Aufgabenplaner eine benutzerdefinierte Aufgabe anlegen und jede Minu
 ```
 
 Beim ersten normalen Lauf werden alle bereits vorhandenen mobile.de-Mails nur als Ausgangsbestand gespeichert. Erst danach neu eintreffende Nachrichten lösen eine WhatsApp aus. Erfolgreich verarbeitete Nachrichten werden in `data/notify-state.json` gemerkt und nicht doppelt versendet.
+
+Der gleiche Scheduler-Lauf prüft außerdem die GitHub-Updatequelle. Die vorhandene 30-Minuten-Cachelogik verhindert einen GitHub-Aufruf jede Minute. Sobald eine neue Version erkannt wird, kommt einmalig eine WhatsApp mit installierter und verfügbarer Version sowie einem Link zur Updateprüfung. Für dieselbe Version wird nicht mehrfach benachrichtigt.
+
+Wer keine Update-Hinweise per WhatsApp möchte, kann setzen:
+
+```php
+$config['whatsapp_notify_updates'] = false;
+```
 
 ## Integrierte Updates
 
