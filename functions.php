@@ -39,7 +39,9 @@ function loadMobileNotifyState()
         'seen' => array(),
         'last_run' => '',
         'last_success' => '',
-        'last_error' => ''
+        'last_error' => '',
+        'last_test' => '',
+        'last_test_error' => ''
     );
 
     $file = getMobileNotifyStatePath();
@@ -508,14 +510,19 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
     if ($testMode) {
         $testText = "🚗 *mobile.de Verkaufszentrale*\n\nWhatsApp-Test erfolgreich ausgelöst.\nZeit: " . date('d.m.Y H:i:s');
         $send = ioBrokerSendOpenWa($config, $config['whatsapp_to'], $testText);
+        $notifyState = loadMobileNotifyState();
+        $notifyState['last_test'] = date('Y-m-d H:i:s');
 
         if (!$send['ok']) {
             $result['ok'] = false;
             $result['error'] = $send['error'];
+            $notifyState['last_test_error'] = $send['error'];
         } else {
             $result['sent_count'] = 1;
+            $notifyState['last_test_error'] = '';
         }
 
+        saveMobileNotifyState($notifyState);
         return $result;
     }
 
@@ -582,11 +589,81 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
 }
 
 
+function getMobileWhatsAppStatus($config)
+{
+    $state = loadMobileNotifyState();
+    $enabled = isWhatsAppNotifyEnabled($config);
+    $to = isset($config['whatsapp_to']) ? normalizeWhatsAppRecipient($config['whatsapp_to']) : '';
+    $apiUrl = isset($config['iobroker_rest_url']) ? trim($config['iobroker_rest_url']) : '';
+    $mode = getIoBrokerApiMode($config);
+    $stateId = isset($config['iobroker_simple_api_state']) && trim($config['iobroker_simple_api_state']) != ''
+        ? trim($config['iobroker_simple_api_state'])
+        : 'mqtt.0.whatsapp.outgoing';
+
+    $lastRunAge = null;
+    if (isset($state['last_run']) && trim($state['last_run']) != '') {
+        $lastRunTs = @strtotime($state['last_run']);
+        if ($lastRunTs !== false) {
+            $lastRunAge = max(0, time() - $lastRunTs);
+        }
+    }
+
+    $configured = $enabled && $to != '' && $apiUrl != '';
+    $cronHealthy = $configured && $lastRunAge !== null && $lastRunAge <= 180;
+
+    return array(
+        'ok' => true,
+        'enabled' => $enabled,
+        'configured' => $configured,
+        'initialized' => !empty($state['initialized']),
+        'api_mode' => $mode,
+        'state_id' => $stateId,
+        'last_run' => isset($state['last_run']) ? $state['last_run'] : '',
+        'last_run_age_seconds' => $lastRunAge,
+        'cron_healthy' => $cronHealthy,
+        'last_success' => isset($state['last_success']) ? $state['last_success'] : '',
+        'last_error' => isset($state['last_error']) ? $state['last_error'] : '',
+        'last_test' => isset($state['last_test']) ? $state['last_test'] : '',
+        'last_test_error' => isset($state['last_test_error']) ? $state['last_test_error'] : ''
+    );
+}
+
+
+function isPrivateNetworkRequest()
+{
+    $ip = isset($_SERVER['REMOTE_ADDR']) ? trim($_SERVER['REMOTE_ADDR']) : '';
+
+    if ($ip == '127.0.0.1' || $ip == '::1') {
+        return true;
+    }
+
+    if (preg_match('/^10\./', $ip)) {
+        return true;
+    }
+
+    if (preg_match('/^192\.168\./', $ip)) {
+        return true;
+    }
+
+    if (preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $ip)) {
+        return true;
+    }
+
+    return false;
+}
+
+
 /*
  * =========================================================
- * Standalone-Aufruf für Synology Aufgabenplaner
+ * Standalone-Aufruf für Synology Aufgabenplaner und UI
  *
- * Browser-Test:
+ * UI Status (nur aus privatem Netz):
+ *   /mobile/functions.php?status=1
+ *
+ * UI Test (nur aus privatem Netz, feste konfigurierte Zielnummer):
+ *   /mobile/functions.php?ui_test=1
+ *
+ * Browser-Test mit Token:
  *   /mobile/functions.php?token=GEHEIMNIS&test=1
  *
  * Regulärer Check:
@@ -599,6 +676,7 @@ if (
     realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)
 ) {
     header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
     $configFile = __DIR__ . '/_private/config.php';
 
@@ -609,6 +687,42 @@ if (
     }
 
     require $configFile;
+
+    /* Read-only Status für die Weboberfläche. */
+    if (isset($_GET['status']) && $_GET['status'] == '1') {
+        if (!isPrivateNetworkRequest()) {
+            http_response_code(403);
+            echo json_encode(array('ok' => false, 'error' => 'Status nur im privaten Netz verfügbar.'));
+            exit;
+        }
+
+        echo json_encode(
+            getMobileWhatsAppStatus($config),
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        exit;
+    }
+
+    /* Fester Testversand aus der Weboberfläche, kein frei wählbarer Empfänger/Text. */
+    if (isset($_GET['ui_test']) && $_GET['ui_test'] == '1') {
+        if (!isPrivateNetworkRequest()) {
+            http_response_code(403);
+            echo json_encode(array('ok' => false, 'error' => 'Test nur im privaten Netz verfügbar.'));
+            exit;
+        }
+
+        $notify = processMobileWhatsAppNotifications($config, array(), true);
+
+        if (!$notify['ok']) {
+            http_response_code(500);
+        }
+
+        echo json_encode(
+            $notify,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        exit;
+    }
 
     $isCli = php_sapi_name() === 'cli';
     $expectedToken = isset($config['notify_cron_token']) ? trim($config['notify_cron_token']) : '';
