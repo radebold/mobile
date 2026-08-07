@@ -47,11 +47,10 @@ data/
 
 Dann:
 
-1. `_private/config.example.php` nach `_private/config.php` kopieren.
-2. Zugangsdaten in `_private/config.php` eintragen.
-3. Sicherstellen, dass der Webserver in `data/` schreiben darf.
-4. `gmail-bridge.gs` in Google Apps Script einrichten und als Web-App veröffentlichen.
-5. Anwendung öffnen: `http://<NAS-IP>/mobile/`
+1. Bei einer Neuinstallation `_private/config.example.php` nach `_private/config.php` kopieren. Bei einer bestehenden Installation die vorhandene `_private/config.php` **behalten**.
+2. Sicherstellen, dass der Webserver in `data/` schreiben darf.
+3. `gmail-bridge.gs` einmal in Google Apps Script einrichten und als Web-App veröffentlichen, sofern dies noch nicht erfolgt ist.
+4. Anwendung öffnen: `http://<NAS-IP>/mobile/`
 
 ## Gmail-Bridge
 
@@ -73,10 +72,11 @@ Die Weboberfläche prüft dieses Repository auf eine neuere Version. Das Ergebni
 Wenn eine neue Version vorhanden ist, erscheint oben ein Update-Button. Beim Update:
 
 1. wird `update-manifest.json` von GitHub geladen,
-2. werden nur freigegebene Programmdateien heruntergeladen,
-3. wird jede Datei per SHA-256 geprüft,
+2. werden nur explizit freigegebene Programmdateien heruntergeladen,
+3. wird jede Datei gegen die im Manifest hinterlegte GitHub-Blob-Prüfsumme verifiziert,
 4. werden die bisherigen Dateien unter `data/update-backups/` gesichert,
-5. werden die neuen Dateien erst danach eingespielt.
+5. werden die neuen Dateien erst danach eingespielt,
+6. bei einem Fehler werden bereits ersetzte Dateien aus dem Backup zurückgespielt.
 
 **Nie automatisch überschrieben werden:**
 
@@ -98,4 +98,4 @@ Automatisch aktualisiert werden ausschließlich die freigegebenen Programmdateie
 
 Repository: `radebold/mobile`
 
-Die produktive Version steht auf `main`. Für eine neue Version müssen die geänderten Dateien committed und anschließend `VERSION` sowie `update-manifest.json` angepasst werden.
+Die produktive Version steht auf `main`. Für eine neue Version werden die geänderten Dateien committed; danach müssen `VERSION` und `update-manifest.json` auf die neue Version bzw. die neuen Blob-Prüfsummen gesetzt werden. Die NAS erkennt die neue Version anschließend automatisch.
