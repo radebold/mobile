@@ -11,10 +11,11 @@ Private Verkaufszentrale für mobile.de-/Kleinanzeigen-Anfragen zum VW Sharan.
 - Gesprächsstatus verwalten
 - beantwortete Gespräche archivieren
 - Anfragen ohne weiteres Interesse in Gmail in den Papierkorb verschieben
-- WhatsApp-Benachrichtigung bei neuen Käufernachrichten über ioBroker `simple-api.0` und den vorhandenen MQTT-WhatsApp-Ausgang
+- WhatsApp-Benachrichtigung bei neuen Käufernachrichten
+- WhatsApp-Systemstatus und Test direkt in der Weboberfläche
 - integriertes Self-Update direkt aus diesem GitHub-Repository
 
-Die Anwendung sendet **keine Antwort an Käufer automatisch**. Optional können ausschließlich interne WhatsApp-Benachrichtigungen über neue Anfragen automatisch versendet werden.
+Die Anwendung sendet keine Käuferantwort automatisch. Automatisch versendet werden optional nur interne WhatsApp-Benachrichtigungen über neue Anfragen.
 
 ## Voraussetzungen
 
@@ -24,7 +25,7 @@ Die Anwendung sendet **keine Antwort an Käufer automatisch**. Optional können 
 - Gmail mit App-Passwort für IMAP
 - Gemini API-Key
 - Google Apps Script Bridge für native Gmail-Entwürfe
-- optional: ioBroker `simple-api.0` und vorhandene WhatsApp-/MQTT-Bridge
+- für WhatsApp: ioBroker `simple-api.0` und der bestehende Ausgang `mqtt.0.whatsapp.outgoing`
 
 ## Installation auf der Synology
 
@@ -34,159 +35,58 @@ Zielordner:
 /volume1/web/mobile/
 ```
 
-Diese Dateien/Ordner aus dem Repository dorthin kopieren:
-
-```text
-index.php
-functions.php
-vehicle.php
-VERSION
-assets/
-lib/
-_private/
-data/
-```
-
-Dann:
-
-1. Bei einer Neuinstallation `_private/config.example.php` nach `_private/config.php` kopieren. Bei einer bestehenden Installation die vorhandene `_private/config.php` **behalten**.
-2. Sicherstellen, dass der Webserver in `data/` schreiben darf.
-3. `gmail-bridge.gs` einmal in Google Apps Script einrichten und als Web-App veröffentlichen, sofern dies noch nicht erfolgt ist.
-4. Anwendung öffnen: `http://<NAS-IP>/mobile/`
+Bei einer bestehenden Installation `_private/config.php` und `data/` behalten. Die Weboberfläche aktualisiert die freigegebenen Programmdateien über `update-manifest.json`.
 
 ## Gmail-Bridge
 
-`gmail-bridge.gs` wird **nicht** automatisch von der NAS ausgeführt. Die Datei muss einmal in Google Apps Script bereitgestellt werden. Bei späteren Änderungen an dieser Datei ist ein erneutes Deployment in Apps Script erforderlich.
-
-In `_private/config.php` müssen anschließend stehen:
+In `_private/config.php`:
 
 ```php
 $config['gmail_bridge_url'] = 'https://script.google.com/macros/s/DEINE_DEPLOYMENT_ID/exec';
 $config['gmail_bridge_token'] = 'DEIN_GEHEIMES_TOKEN';
 ```
 
-Dasselbe Token muss in `gmail-bridge.gs` gesetzt sein.
+## WhatsApp-Benachrichtigung
 
-## WhatsApp-Benachrichtigungen über ioBroker simple-api
-
-Die bestehende WhatsApp-Infrastruktur verwendet den Datenpunkt:
-
-```text
-mqtt.0.whatsapp.outgoing
-```
-
-Die Verkaufszentrale schreibt neue Benachrichtigungen über `simple-api.0` direkt dort hinein. Es ist **kein zusätzlicher ioBroker-Datenpunkt und kein zusätzliches ioBroker-JavaScript erforderlich**.
-
-In `_private/config.php`:
+Für die vorhandene ioBroker-Installation wird `simple-api.0` genutzt. Die Verkaufszentrale schreibt das minimale JSON `{to,text}` direkt nach `mqtt.0.whatsapp.outgoing`.
 
 ```php
 $config['whatsapp_notify_enabled'] = true;
 $config['whatsapp_to'] = '491234567890@c.us';
-
 $config['iobroker_api_mode'] = 'simple-api';
 $config['iobroker_rest_url'] = 'http://DEINE-IOBROKER-IP:8087';
 $config['iobroker_simple_api_state'] = 'mqtt.0.whatsapp.outgoing';
-
-$config['iobroker_rest_user'] = '';
-$config['iobroker_rest_password'] = '';
-
 $config['notify_cron_token'] = 'EIN-LANGES-ZUFAELLIGES-GEHEIMNIS';
 $config['mobile_web_url'] = 'http://DEINE-NAS-IP/mobile/';
 ```
 
-Für einen Einzelchat erwartet die bestehende WhatsApp-Bridge die Empfänger-ID im Format:
+Einzelchat-Empfänger werden zusätzlich automatisch auf das Format `49...@c.us` normalisiert.
 
-```text
-491234567890@c.us
-```
+### Weboberfläche
 
-also ohne führendes `+`.
+Ab Version 2.8.0 erscheint im Systembereich ein eigener WhatsApp-Status mit Test-Button. Die Anzeige wird grün, wenn der automatische Check innerhalb der letzten drei Minuten gelaufen ist. Gelb bedeutet, dass kein aktueller Scheduler-Lauf erkannt wurde; rot zeigt Konfigurations- oder Laufzeitfehler.
 
-### Tatsächlicher simple-api-Aufruf
+### Automatische Prüfung auf der Synology
 
-Die Verkaufszentrale verwendet einen HTTP-POST auf:
-
-```text
-http://<IOBROKER-IP>:8087/setValueFromBody/mqtt.0.whatsapp.outgoing
-```
-
-Der Body enthält JSON, beispielsweise:
-
-```json
-{
-  "to": "491234567890@c.us",
-  "text": "Neue mobile.de-Nachricht ..."
-}
-```
-
-### Test
-
-Nach der Konfiguration kann eine Test-WhatsApp ausgelöst werden:
-
-```text
-http://<NAS-IP>/mobile/functions.php?token=<notify_cron_token>&test=1
-```
-
-Bei erfolgreicher Übergabe an ioBroker wird JSON mit `"ok": true` und `"sent_count": 1` ausgegeben.
-
-### Automatische Prüfung
-
-Für automatische Benachrichtigungen muss `functions.php` regelmäßig aufgerufen werden. Beispiel für den Synology Aufgabenplaner, jede Minute:
+Im Synology Aufgabenplaner eine benutzerdefinierte Aufgabe anlegen und jede Minute ausführen:
 
 ```bash
-/usr/bin/curl -fsS "http://<NAS-IP>/mobile/functions.php?token=<notify_cron_token>" >/dev/null 2>&1
+/usr/bin/curl -fsS "http://DEINE-NAS-IP/mobile/functions.php?token=DEIN_NOTIFY_CRON_TOKEN" >/dev/null 2>&1
 ```
 
-Der erste Lauf verschickt **keine alten Nachrichten**, sondern merkt sich den aktuellen Stand als Basis. Erst danach eintreffende mobile.de-Nachrichten lösen eine WhatsApp aus. Erfolgreich gemeldete Nachrichten werden in `data/notify-state.json` gespeichert und deshalb nicht doppelt versendet.
-
-Der Versandweg ist:
-
-```text
-Gmail / mobile.de
-      ↓
-Synology Verkaufszentrale
-      ↓
-simple-api.0 :8087
-      ↓
-mqtt.0.whatsapp.outgoing
-      ↓
-bestehende WhatsApp-/MQTT-Bridge
-      ↓
-WhatsApp
-```
+Beim ersten normalen Lauf werden alle bereits vorhandenen mobile.de-Mails nur als Ausgangsbestand gespeichert. Erst danach neu eintreffende Nachrichten lösen eine WhatsApp aus. Erfolgreich verarbeitete Nachrichten werden in `data/notify-state.json` gemerkt und nicht doppelt versendet.
 
 ## Integrierte Updates
 
-Die Weboberfläche prüft dieses Repository auf eine neuere Version. Das Ergebnis wird 30 Minuten gecacht; über **prüfen** im Systembereich kann sofort neu geprüft werden.
-
-Wenn eine neue Version vorhanden ist, erscheint oben ein Update-Button. Beim Update:
-
-1. wird `update-manifest.json` von GitHub geladen,
-2. werden nur explizit freigegebene Programmdateien heruntergeladen,
-3. wird jede Datei gegen die im Manifest hinterlegte GitHub-Blob-Prüfsumme verifiziert,
-4. werden die bisherigen Dateien unter `data/update-backups/` gesichert,
-5. werden die neuen Dateien erst danach eingespielt,
-6. bei einem Fehler werden bereits ersetzte Dateien aus dem Backup zurückgespielt.
-
-**Nie automatisch überschrieben werden:**
+Die Weboberfläche prüft `update-manifest.json` auf GitHub. Beim Update werden nur freigegebene Programmdateien geladen und vor dem Austausch gesichert. Nicht überschrieben werden insbesondere:
 
 - `_private/config.php`
 - `data/status.json`
 - `data/notify-state.json`
 - persönliche Laufzeitdaten
 
-Automatisch aktualisiert werden ausschließlich die freigegebenen Programmdateien aus `update-manifest.json`, derzeit:
-
-- `index.php`
-- `functions.php`
-- `vehicle.php`
-- `VERSION`
-- `assets/app.css`
-- `assets/app.js`
-- `lib/*.php`
-
 ## Entwicklung
 
 Repository: `radebold/mobile`
 
-Die produktive Version steht auf `main`. Für eine neue Version werden die geänderten Dateien committed; danach müssen `VERSION` und `update-manifest.json` auf die neue Version bzw. die neuen Blob-Prüfsummen gesetzt werden. Die NAS erkennt die neue Version anschließend automatisch.
+Die produktive Version steht auf `main`. Für Releases werden `VERSION` und `update-manifest.json` aktualisiert; die NAS erkennt die neue Version anschließend über die integrierte Updatefunktion.
