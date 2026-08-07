@@ -63,6 +63,22 @@ function copyDraft(id, button) {
     }
 }
 
+function ensureWhatsAppUiStyles() {
+    if (document.getElementById('whatsapp-ui-styles')) return;
+
+    var style = document.createElement('style');
+    style.id = 'whatsapp-ui-styles';
+    style.textContent =
+        '.whatsapp-system-row{gap:7px;min-width:0}' +
+        '.whatsapp-system-copy{min-width:0;display:flex;flex:1 1 auto;flex-direction:column;gap:1px}' +
+        '.whatsapp-system-name{color:#aeb4bf;font-size:10px;line-height:1.15}' +
+        '.whatsapp-system-meta{max-width:128px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6f7786;font-size:8px;line-height:1.2}' +
+        '.whatsapp-test-button{appearance:none;border:1px solid rgba(255,255,255,.10);border-radius:7px;background:rgba(255,255,255,.06);color:#c4c9d2;padding:4px 7px;font-size:8px;font-weight:800;cursor:pointer;transition:.14s ease}' +
+        '.whatsapp-test-button:hover:not(:disabled){background:rgba(255,255,255,.11);color:#fff}' +
+        '.whatsapp-test-button:disabled{opacity:.55;cursor:wait}';
+    document.head.appendChild(style);
+}
+
 function whatsappFormatTime(value) {
     if (!value) return '';
 
@@ -92,6 +108,7 @@ function renderWhatsAppStatus(data) {
     if (!el.block || !el.dot || !el.text || !el.meta) return;
 
     el.dot.className = 'system-dot';
+    el.block.title = '';
 
     if (!data || data.ok !== true) {
         el.dot.classList.add('bad');
@@ -160,9 +177,10 @@ function sendWhatsAppUiTest() {
     var el = getWhatsAppStatusElements();
     if (!el.button || !window.fetch) return;
 
-    var oldText = el.button.textContent;
+    var oldText = 'Test';
     el.button.disabled = true;
     el.button.textContent = '…';
+    el.button.title = 'Testnachricht wird an ioBroker übergeben';
 
     fetch('functions.php?ui_test=1&_=' + Date.now(), {
         credentials: 'same-origin',
@@ -178,9 +196,11 @@ function sendWhatsAppUiTest() {
         })
         .then(function () {
             el.button.textContent = 'Gesendet';
+            el.button.title = 'Test wurde erfolgreich an ioBroker übergeben';
             window.setTimeout(function () {
                 el.button.textContent = oldText;
                 el.button.disabled = false;
+                el.button.title = 'Testnachricht an die konfigurierte WhatsApp-Nummer senden';
             }, 1600);
             refreshWhatsAppStatus();
         })
@@ -198,6 +218,8 @@ function sendWhatsAppUiTest() {
 function initWhatsAppSystemStatus() {
     var system = document.querySelector('.system-status');
     if (!system || document.getElementById('whatsapp-system-block')) return;
+
+    ensureWhatsAppUiStyles();
 
     var block = document.createElement('div');
     block.className = 'system-row whatsapp-system-row';
