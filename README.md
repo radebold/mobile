@@ -11,9 +11,10 @@ Private Verkaufszentrale für mobile.de-/Kleinanzeigen-Anfragen zum VW Sharan.
 - Gesprächsstatus verwalten
 - beantwortete Gespräche archivieren
 - Anfragen ohne weiteres Interesse in Gmail in den Papierkorb verschieben
+- WhatsApp-Benachrichtigung bei neuen Käufernachrichten über ioBroker REST-API und `open-wa.0`
 - integriertes Self-Update direkt aus diesem GitHub-Repository
 
-Die Anwendung sendet **keine Nachricht automatisch**.
+Die Anwendung sendet **keine Antwort an Käufer automatisch**. Optional können ausschließlich interne WhatsApp-Benachrichtigungen über neue Anfragen automatisch versendet werden.
 
 ## Voraussetzungen
 
@@ -23,6 +24,7 @@ Die Anwendung sendet **keine Nachricht automatisch**.
 - Gmail mit App-Passwort für IMAP
 - Gemini API-Key
 - Google Apps Script Bridge für native Gmail-Entwürfe
+- optional: ioBroker REST-API und `open-wa.0` für WhatsApp-Benachrichtigungen
 
 ## Installation auf der Synology
 
@@ -65,6 +67,60 @@ $config['gmail_bridge_token'] = 'DEIN_GEHEIMES_TOKEN';
 
 Dasselbe Token muss in `gmail-bridge.gs` gesetzt sein.
 
+## WhatsApp-Benachrichtigungen über ioBroker + open-wa.0
+
+Die Verkaufszentrale kann neue mobile.de-Nachrichten über die ioBroker REST-API direkt an den Adapter `open-wa.0` weitergeben. Verwendet wird ioBrokers `sendTo`-Command mit dem bereits von `open-wa.0` erwarteten Payload `{to, text}`.
+
+In `_private/config.php` ergänzen:
+
+```php
+$config['whatsapp_notify_enabled'] = true;
+$config['whatsapp_to'] = '+49XXXXXXXXXXX';
+$config['openwa_adapter'] = 'open-wa.0';
+
+$config['iobroker_rest_url'] = 'http://DEINE-IOBROKER-IP:8093';
+$config['iobroker_rest_user'] = '';
+$config['iobroker_rest_password'] = '';
+// $config['iobroker_rest_bearer_token'] = '';
+
+$config['notify_cron_token'] = 'EIN-LANGES-ZUFAELLIGES-GEHEIMNIS';
+$config['mobile_web_url'] = 'http://DEINE-NAS-IP/mobile/';
+```
+
+### Test
+
+Nach der Konfiguration kann eine Test-WhatsApp ausgelöst werden:
+
+```text
+http://<NAS-IP>/mobile/functions.php?token=<notify_cron_token>&test=1
+```
+
+Bei Erfolg wird JSON mit `"ok": true` und `"sent_count": 1` ausgegeben.
+
+### Automatische Prüfung
+
+Für automatische Benachrichtigungen muss `functions.php` regelmäßig aufgerufen werden. Beispiel für den Synology Aufgabenplaner, jede Minute:
+
+```bash
+/usr/bin/curl -fsS "http://<NAS-IP>/mobile/functions.php?token=<notify_cron_token>" >/dev/null 2>&1
+```
+
+Der erste Lauf verschickt **keine alten Nachrichten**, sondern merkt sich den aktuellen Stand als Basis. Erst danach eintreffende mobile.de-Nachrichten lösen eine WhatsApp aus. Erfolgreich gemeldete Nachrichten werden in `data/notify-state.json` gespeichert und deshalb nicht doppelt versendet.
+
+Der Versandweg ist:
+
+```text
+Gmail / mobile.de
+      ↓
+Synology Verkaufszentrale
+      ↓
+ioBroker REST-API /v1/command/sendTo
+      ↓
+open-wa.0 / command "send"
+      ↓
+WhatsApp
+```
+
 ## Integrierte Updates
 
 Die Weboberfläche prüft dieses Repository auf eine neuere Version. Das Ergebnis wird 30 Minuten gecacht; über **prüfen** im Systembereich kann sofort neu geprüft werden.
@@ -82,6 +138,7 @@ Wenn eine neue Version vorhanden ist, erscheint oben ein Update-Button. Beim Upd
 
 - `_private/config.php`
 - `data/status.json`
+- `data/notify-state.json`
 - persönliche Laufzeitdaten
 
 Automatisch aktualisiert werden ausschließlich die freigegebenen Programmdateien aus `update-manifest.json`, derzeit:
