@@ -36,6 +36,13 @@ $config['whatsapp_to'] = '491234567890@c.us';
 $config['openwa_adapter'] = 'open-wa.0';
 
 /*
+ * Standardmäßig wird auch einmalig per WhatsApp informiert,
+ * wenn eine neue Version der Verkaufszentrale verfügbar ist.
+ * Auf false setzen, falls das nicht gewünscht ist.
+ */
+$config['whatsapp_notify_updates'] = true;
+
+/*
  * Vorhandener ioBroker simple-api Adapter, typischerweise Port 8087.
  * Die Verkaufszentrale schreibt das JSON direkt in den bestehenden
  * MQTT-Ausgangsdatenpunkt der WhatsApp-Bridge.
