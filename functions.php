@@ -18,8 +18,8 @@ require_once __DIR__ . '/lib/update.php';
  *
  * Unterstützte Wege:
  * 1) simple-api (z. B. Port 8087):
- *    PHP schreibt JSON in einen ioBroker-Datenpunkt.
- *    Ein kleines ioBroker-JavaScript ruft anschließend open-wa.0 auf.
+ *    PHP schreibt JSON direkt in mqtt.0.whatsapp.outgoing.
+ *    Die vorhandene MQTT-/WhatsApp-Bridge übernimmt den Versand.
  *
  * 2) rest-api:
  *    PHP ruft /v1/command/sendTo direkt auf.
@@ -128,6 +128,38 @@ function isWhatsAppNotifyEnabled($config)
 }
 
 
+function normalizeWhatsAppRecipient($to)
+{
+    $to = trim($to);
+
+    if ($to == '') {
+        return '';
+    }
+
+    /* Bereits vollständige WhatsApp-/Gruppen-ID unverändert lassen. */
+    if (strpos($to, '@') !== false) {
+        return $to;
+    }
+
+    /* Telefonnummern in das von der Bridge erwartete Format 49...@c.us bringen. */
+    $number = preg_replace('/[^0-9]/', '', $to);
+
+    if ($number == '') {
+        return $to;
+    }
+
+    if (substr($number, 0, 2) == '00') {
+        $number = substr($number, 2);
+    }
+
+    if (substr($number, 0, 1) == '0') {
+        $number = '49' . substr($number, 1);
+    }
+
+    return $number . '@c.us';
+}
+
+
 function getIoBrokerApiMode($config)
 {
     if (isset($config['iobroker_api_mode']) && trim($config['iobroker_api_mode']) != '') {
@@ -142,11 +174,6 @@ function getIoBrokerApiMode($config)
         }
     }
 
-    /*
-     * Kompatibilitäts-Automatik:
-     * Port 8087 ist der typische simple-api-Port.
-     * Sonst bleibt das bisherige Verhalten rest-api.
-     */
     if (isset($config['iobroker_rest_url'])) {
         $url = trim($config['iobroker_rest_url']);
         $parts = @parse_url($url);
@@ -197,7 +224,8 @@ function ioBrokerSimpleApiQueueOpenWa($config, $to, $text)
         return $result;
     }
 
-    $stateId = '0_userdata.0.mobile.whatsapp.outgoing';
+    /* Bestehender MQTT-Ausgang der WhatsApp-Bridge. */
+    $stateId = 'mqtt.0.whatsapp.outgoing';
     if (
         isset($config['iobroker_simple_api_state']) &&
         trim($config['iobroker_simple_api_state']) != ''
@@ -208,14 +236,10 @@ function ioBrokerSimpleApiQueueOpenWa($config, $to, $text)
     $baseUrl = rtrim(trim($config['iobroker_rest_url']), '/');
     $url = $baseUrl . '/setValueFromBody/' . rawurlencode($stateId);
 
+    /* Genau das minimale JSON, das die vorhandene MQTT-WhatsApp-Bridge benötigt. */
     $payload = array(
-        'to' => trim($to),
-        'text' => $text,
-        'adapter' => isset($config['openwa_adapter']) && trim($config['openwa_adapter']) != ''
-            ? trim($config['openwa_adapter'])
-            : 'open-wa.0',
-        'source' => 'mobile.de-Verkaufszentrale',
-        'created' => date('c')
+        'to' => normalizeWhatsAppRecipient($to),
+        'text' => $text
     );
 
     $bodyData = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -286,7 +310,7 @@ function ioBrokerRestApiSendOpenWa($config, $to, $text)
             : 'open-wa.0',
         'command' => 'send',
         'message' => array(
-            'to' => trim($to),
+            'to' => normalizeWhatsAppRecipient($to),
             'text' => $text
         )
     );
@@ -546,7 +570,6 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
             break;
         }
 
-        /* Erst nach erfolgreicher Übergabe an ioBroker als gesehen merken. */
         $state['seen'][$key] = $item['timestamp'];
         $state['last_success'] = date('Y-m-d H:i:s');
         $state['last_error'] = '';
