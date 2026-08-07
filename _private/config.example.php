@@ -28,25 +28,32 @@ $config['mobile_web_url'] = 'http://DEINE-NAS-IP/mobile/';
 
 /*
  * WhatsApp-Benachrichtigung bei neuen mobile.de-Nachrichten.
- * Versandweg:
- * NAS -> ioBroker REST-API -> sendTo(open-wa.0, 'send', {to, text})
  */
 $config['whatsapp_notify_enabled'] = true;
 $config['whatsapp_to'] = '+49XXXXXXXXXXX';
 $config['openwa_adapter'] = 'open-wa.0';
 
-/* ioBroker REST-API, Standardport normalerweise 8093 */
-$config['iobroker_rest_url'] = 'http://DEINE-IOBROKER-IP:8093';
+/*
+ * Vorhandener ioBroker simple-api Adapter, typischerweise Port 8087.
+ * Die Verkaufszentrale schreibt JSON in den unten definierten Datenpunkt.
+ * Ein ioBroker-JavaScript leitet die Nachricht an open-wa.0 weiter.
+ */
+$config['iobroker_api_mode'] = 'simple-api';
+$config['iobroker_rest_url'] = 'http://DEINE-IOBROKER-IP:8087';
+$config['iobroker_simple_api_state'] = '0_userdata.0.mobile.whatsapp.outgoing';
 
-/* Nur ausfüllen, wenn Authentifizierung im REST-API-Adapter aktiviert ist. */
+/* Nur ausfüllen, wenn Authentifizierung im API-Adapter aktiviert ist. */
 $config['iobroker_rest_user'] = '';
 $config['iobroker_rest_password'] = '';
 // $config['iobroker_rest_bearer_token'] = '';
 
 /*
- * Schutz für den periodischen Aufruf durch den Synology Aufgabenplaner.
- * Bitte einen langen zufälligen Wert verwenden.
+ * Alternativ mit installiertem ioBroker rest-api Adapter:
+ * $config['iobroker_api_mode'] = 'rest-api';
+ * $config['iobroker_rest_url'] = 'http://DEINE-IOBROKER-IP:8093';
  */
+
+/* Schutz für den periodischen Aufruf durch den Synology Aufgabenplaner. */
 $config['notify_cron_token'] = 'BITTE-EIN-LANGES-ZUFAELLIGES-GEHEIMNIS-EINTRAGEN';
 
 /* Optional: maximale Länge des Käufertexts in der WhatsApp */
@@ -54,7 +61,5 @@ $config['whatsapp_notify_message_max_chars'] = 900;
 
 /*
  * Optional: eigene Updatequelle. Normalerweise NICHT notwendig.
- * Standard ist:
- * https://raw.githubusercontent.com/radebold/mobile/main/update-manifest.json
  */
 // $config['update_manifest_url'] = 'https://raw.githubusercontent.com/radebold/mobile/main/update-manifest.json';
