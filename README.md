@@ -11,7 +11,7 @@ Private Verkaufszentrale für mobile.de-/Kleinanzeigen-Anfragen zum VW Sharan.
 - Gesprächsstatus verwalten
 - beantwortete Gespräche archivieren
 - Anfragen ohne weiteres Interesse in Gmail in den Papierkorb verschieben
-- WhatsApp-Benachrichtigung bei neuen Käufernachrichten über ioBroker REST-API und `open-wa.0`
+- WhatsApp-Benachrichtigung bei neuen Käufernachrichten über ioBroker `simple-api.0` und den vorhandenen MQTT-WhatsApp-Ausgang
 - integriertes Self-Update direkt aus diesem GitHub-Repository
 
 Die Anwendung sendet **keine Antwort an Käufer automatisch**. Optional können ausschließlich interne WhatsApp-Benachrichtigungen über neue Anfragen automatisch versendet werden.
@@ -24,7 +24,7 @@ Die Anwendung sendet **keine Antwort an Käufer automatisch**. Optional können 
 - Gmail mit App-Passwort für IMAP
 - Gemini API-Key
 - Google Apps Script Bridge für native Gmail-Entwürfe
-- optional: ioBroker REST-API und `open-wa.0` für WhatsApp-Benachrichtigungen
+- optional: ioBroker `simple-api.0` und vorhandene WhatsApp-/MQTT-Bridge
 
 ## Installation auf der Synology
 
@@ -67,24 +67,56 @@ $config['gmail_bridge_token'] = 'DEIN_GEHEIMES_TOKEN';
 
 Dasselbe Token muss in `gmail-bridge.gs` gesetzt sein.
 
-## WhatsApp-Benachrichtigungen über ioBroker + open-wa.0
+## WhatsApp-Benachrichtigungen über ioBroker simple-api
 
-Die Verkaufszentrale kann neue mobile.de-Nachrichten über die ioBroker REST-API direkt an den Adapter `open-wa.0` weitergeben. Verwendet wird ioBrokers `sendTo`-Command mit dem bereits von `open-wa.0` erwarteten Payload `{to, text}`.
+Die bestehende WhatsApp-Infrastruktur verwendet den Datenpunkt:
 
-In `_private/config.php` ergänzen:
+```text
+mqtt.0.whatsapp.outgoing
+```
+
+Die Verkaufszentrale schreibt neue Benachrichtigungen über `simple-api.0` direkt dort hinein. Es ist **kein zusätzlicher ioBroker-Datenpunkt und kein zusätzliches ioBroker-JavaScript erforderlich**.
+
+In `_private/config.php`:
 
 ```php
 $config['whatsapp_notify_enabled'] = true;
-$config['whatsapp_to'] = '+49XXXXXXXXXXX';
-$config['openwa_adapter'] = 'open-wa.0';
+$config['whatsapp_to'] = '491234567890@c.us';
 
-$config['iobroker_rest_url'] = 'http://DEINE-IOBROKER-IP:8093';
+$config['iobroker_api_mode'] = 'simple-api';
+$config['iobroker_rest_url'] = 'http://DEINE-IOBROKER-IP:8087';
+$config['iobroker_simple_api_state'] = 'mqtt.0.whatsapp.outgoing';
+
 $config['iobroker_rest_user'] = '';
 $config['iobroker_rest_password'] = '';
-// $config['iobroker_rest_bearer_token'] = '';
 
 $config['notify_cron_token'] = 'EIN-LANGES-ZUFAELLIGES-GEHEIMNIS';
 $config['mobile_web_url'] = 'http://DEINE-NAS-IP/mobile/';
+```
+
+Für einen Einzelchat erwartet die bestehende WhatsApp-Bridge die Empfänger-ID im Format:
+
+```text
+491234567890@c.us
+```
+
+also ohne führendes `+`.
+
+### Tatsächlicher simple-api-Aufruf
+
+Die Verkaufszentrale verwendet einen HTTP-POST auf:
+
+```text
+http://<IOBROKER-IP>:8087/setValueFromBody/mqtt.0.whatsapp.outgoing
+```
+
+Der Body enthält JSON, beispielsweise:
+
+```json
+{
+  "to": "491234567890@c.us",
+  "text": "Neue mobile.de-Nachricht ..."
+}
 ```
 
 ### Test
@@ -95,7 +127,7 @@ Nach der Konfiguration kann eine Test-WhatsApp ausgelöst werden:
 http://<NAS-IP>/mobile/functions.php?token=<notify_cron_token>&test=1
 ```
 
-Bei Erfolg wird JSON mit `"ok": true` und `"sent_count": 1` ausgegeben.
+Bei erfolgreicher Übergabe an ioBroker wird JSON mit `"ok": true` und `"sent_count": 1` ausgegeben.
 
 ### Automatische Prüfung
 
@@ -114,9 +146,11 @@ Gmail / mobile.de
       ↓
 Synology Verkaufszentrale
       ↓
-ioBroker REST-API /v1/command/sendTo
+simple-api.0 :8087
       ↓
-open-wa.0 / command "send"
+mqtt.0.whatsapp.outgoing
+      ↓
+bestehende WhatsApp-/MQTT-Bridge
       ↓
 WhatsApp
 ```
