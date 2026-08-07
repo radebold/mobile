@@ -41,7 +41,13 @@ function loadMobileNotifyState()
         'last_success' => '',
         'last_error' => '',
         'last_test' => '',
-        'last_test_error' => ''
+        'last_test_error' => '',
+        'last_update_check' => '',
+        'latest_version' => '',
+        'update_available' => false,
+        'last_update_notified_version' => '',
+        'last_update_notification' => '',
+        'update_error' => ''
     );
 
     $file = getMobileNotifyStatePath();
@@ -127,6 +133,23 @@ function isWhatsAppNotifyEnabled($config)
         $value === 1 ||
         $value === '1' ||
         strtolower(trim(strval($value))) === 'true';
+}
+
+
+function isWhatsAppUpdateNotifyEnabled($config)
+{
+    if (!isset($config['whatsapp_notify_updates'])) {
+        return true;
+    }
+
+    $value = $config['whatsapp_notify_updates'];
+
+    if ($value === false || $value === 0 || $value === '0') {
+        return false;
+    }
+
+    $text = strtolower(trim(strval($value)));
+    return $text !== 'false' && $text !== 'no' && $text !== 'off';
 }
 
 
@@ -415,6 +438,23 @@ function shortenWhatsAppText($text, $maxLength)
 }
 
 
+function buildMobileConversationUrl($config, $conversation)
+{
+    if (!isset($config['mobile_web_url']) || trim($config['mobile_web_url']) == '') {
+        return '';
+    }
+
+    $base = rtrim(trim($config['mobile_web_url']), '/');
+    $key = isset($conversation['key']) ? trim($conversation['key']) : '';
+
+    if ($key == '') {
+        return $base . '/';
+    }
+
+    return $base . '/index.php?conversation=' . rawurlencode($key) . '#c-' . rawurlencode($key);
+}
+
+
 function buildMobileWhatsAppNotification($config, $conversation, $message)
 {
     $name = isset($conversation['name']) && trim($conversation['name']) != ''
@@ -423,6 +463,7 @@ function buildMobileWhatsAppNotification($config, $conversation, $message)
 
     $date = isset($message['date']) ? $message['date'] : date('d.m.Y H:i');
     $text = isset($message['text']) ? trim($message['text']) : '';
+    $subject = isset($message['subject']) ? trim($message['subject']) : '';
 
     $maxChars = 900;
     if (
@@ -435,12 +476,18 @@ function buildMobileWhatsAppNotification($config, $conversation, $message)
     $text = shortenWhatsAppText($text, $maxChars);
 
     $notification = "🚗 *Neue mobile.de-Nachricht*\n\n";
-    $notification .= "Von: " . $name . "\n";
-    $notification .= "Zeit: " . $date . "\n\n";
-    $notification .= $text;
+    $notification .= "Von: *" . $name . "*\n";
+    $notification .= "Zeit: " . $date . "\n";
 
-    if (isset($config['mobile_web_url']) && trim($config['mobile_web_url']) != '') {
-        $notification .= "\n\nVerkaufszentrale:\n" . rtrim(trim($config['mobile_web_url']), '/');
+    if ($subject != '') {
+        $notification .= "Betreff: " . $subject . "\n";
+    }
+
+    $notification .= "\n" . $text;
+
+    $conversationUrl = buildMobileConversationUrl($config, $conversation);
+    if ($conversationUrl != '') {
+        $notification .= "\n\n👉 *Unterhaltung öffnen:*\n" . $conversationUrl;
     }
 
     return $notification;
@@ -589,6 +636,100 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
 }
 
 
+function getLocalMobileAppVersion()
+{
+    $file = __DIR__ . '/VERSION';
+
+    if (!file_exists($file)) {
+        return '0.0.0';
+    }
+
+    $version = trim(@file_get_contents($file));
+    return $version != '' ? $version : '0.0.0';
+}
+
+
+function processMobileGitHubUpdateWatch($config)
+{
+    $localVersion = getLocalMobileAppVersion();
+    $result = array(
+        'ok' => false,
+        'current_version' => $localVersion,
+        'latest_version' => '',
+        'available' => false,
+        'notified' => false,
+        'error' => ''
+    );
+
+    $updateInfo = getGitHubUpdateInfo(
+        $localVersion,
+        __DIR__,
+        $config,
+        false
+    );
+
+    $state = loadMobileNotifyState();
+    $state['last_update_check'] = date('Y-m-d H:i:s');
+
+    if (empty($updateInfo['ok'])) {
+        $error = isset($updateInfo['error']) ? $updateInfo['error'] : 'GitHub-Updateprüfung fehlgeschlagen.';
+        $result['error'] = $error;
+        $state['update_error'] = $error;
+        saveMobileNotifyState($state);
+        return $result;
+    }
+
+    $latestVersion = isset($updateInfo['latest_version'])
+        ? trim($updateInfo['latest_version'])
+        : $localVersion;
+
+    $available = !empty($updateInfo['available']);
+
+    $result['ok'] = true;
+    $result['latest_version'] = $latestVersion;
+    $result['available'] = $available;
+
+    $state['latest_version'] = $latestVersion;
+    $state['update_available'] = $available;
+    $state['update_error'] = '';
+
+    if (
+        $available &&
+        isWhatsAppNotifyEnabled($config) &&
+        isWhatsAppUpdateNotifyEnabled($config) &&
+        isset($config['whatsapp_to']) &&
+        trim($config['whatsapp_to']) != '' &&
+        (!isset($state['last_update_notified_version']) || $state['last_update_notified_version'] != $latestVersion)
+    ) {
+        $text = "🔄 *Neue Version der Verkaufszentrale*\n\n";
+        $text .= "Installiert: " . $localVersion . "\n";
+        $text .= "Verfügbar: *" . $latestVersion . "*\n";
+
+        if (isset($updateInfo['notes']) && trim($updateInfo['notes']) != '') {
+            $text .= "\n" . trim($updateInfo['notes']) . "\n";
+        }
+
+        if (isset($config['mobile_web_url']) && trim($config['mobile_web_url']) != '') {
+            $text .= "\n👉 *Update öffnen:*\n" . rtrim(trim($config['mobile_web_url']), '/') . '/index.php?check_update=1';
+        }
+
+        $send = ioBrokerSendOpenWa($config, $config['whatsapp_to'], $text);
+
+        if ($send['ok']) {
+            $state['last_update_notified_version'] = $latestVersion;
+            $state['last_update_notification'] = date('Y-m-d H:i:s');
+            $result['notified'] = true;
+        } else {
+            $state['update_error'] = 'Update-Hinweis konnte nicht per WhatsApp gesendet werden: ' . $send['error'];
+            $result['error'] = $state['update_error'];
+        }
+    }
+
+    saveMobileNotifyState($state);
+    return $result;
+}
+
+
 function getMobileWhatsAppStatus($config)
 {
     $state = loadMobileNotifyState();
@@ -624,7 +765,12 @@ function getMobileWhatsAppStatus($config)
         'last_success' => isset($state['last_success']) ? $state['last_success'] : '',
         'last_error' => isset($state['last_error']) ? $state['last_error'] : '',
         'last_test' => isset($state['last_test']) ? $state['last_test'] : '',
-        'last_test_error' => isset($state['last_test_error']) ? $state['last_test_error'] : ''
+        'last_test_error' => isset($state['last_test_error']) ? $state['last_test_error'] : '',
+        'last_update_check' => isset($state['last_update_check']) ? $state['last_update_check'] : '',
+        'latest_version' => isset($state['latest_version']) ? $state['latest_version'] : '',
+        'update_available' => !empty($state['update_available']),
+        'last_update_notification' => isset($state['last_update_notification']) ? $state['last_update_notification'] : '',
+        'update_error' => isset($state['update_error']) ? $state['update_error'] : ''
     );
 }
 
@@ -767,6 +913,10 @@ if (
         $mail['conversations'],
         $testMode
     );
+
+    if (!$testMode) {
+        $notify['update_check'] = processMobileGitHubUpdateWatch($config);
+    }
 
     if (!$notify['ok']) {
         http_response_code(500);
