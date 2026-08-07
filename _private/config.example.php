@@ -37,12 +37,12 @@ $config['openwa_adapter'] = 'open-wa.0';
 
 /*
  * Vorhandener ioBroker simple-api Adapter, typischerweise Port 8087.
- * Die Verkaufszentrale schreibt JSON in den unten definierten Datenpunkt.
- * Ein ioBroker-JavaScript leitet die Nachricht an open-wa.0 weiter.
+ * Die Verkaufszentrale schreibt das JSON direkt in den bestehenden
+ * MQTT-Ausgangsdatenpunkt der WhatsApp-Bridge.
  */
 $config['iobroker_api_mode'] = 'simple-api';
 $config['iobroker_rest_url'] = 'http://DEINE-IOBROKER-IP:8087';
-$config['iobroker_simple_api_state'] = '0_userdata.0.mobile.whatsapp.outgoing';
+$config['iobroker_simple_api_state'] = 'mqtt.0.whatsapp.outgoing';
 
 /* Nur ausfüllen, wenn Authentifizierung im API-Adapter aktiviert ist. */
 $config['iobroker_rest_user'] = '';
