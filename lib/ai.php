@@ -145,14 +145,18 @@ function getBuyerFirstName($name)
         return '';
     }
 
-    $name = preg_replace('/^(Herr\\/Frau|Herr|Frau)\\s+/iu', '', $name);
+    /*
+     * Typische mobile.de-Prefixe entfernen, falls sie im Anzeigenamen
+     * enthalten sein sollten.
+     */
+    $name = preg_replace('/^(Herr\/Frau|Herr|Frau)\s+/iu', '', $name);
     $name = trim($name);
 
     if ($name == '') {
         return '';
     }
 
-    $parts = preg_split('/\\s+/u', $name);
+    $parts = preg_split('/\s+/u', $name);
 
     if (!is_array($parts) || count($parts) == 0) {
         return '';
@@ -160,6 +164,7 @@ function getBuyerFirstName($name)
 
     $firstName = trim($parts[0]);
 
+    /* Nur einfache, plausible Namensbestandteile verwenden. */
     if ($firstName == '' || strpos($firstName, '@') !== false) {
         return '';
     }
@@ -170,25 +175,41 @@ function getBuyerFirstName($name)
 
 function ensureReplyParagraphs($text)
 {
+    /*
+     * Gemini soll die Absätze bereits selbst setzen. Diese Funktion ist
+     * lediglich ein technisches Sicherheitsnetz, falls trotzdem eine
+     * längere Textwand ohne Leerzeilen zurückkommt.
+     *
+     * PHP 5.6 kompatibel.
+     */
+
     $text = str_replace(array("\r\n", "\r"), "\n", trim($text));
-    $text = preg_replace('/^```(?:text)?\\s*/iu', '', $text);
-    $text = preg_replace('/\\s*```$/u', '', $text);
-    $text = preg_replace('/[ \\t]+\\n/u', "\n", $text);
-    $text = preg_replace('/\\n{3,}/u', "\n\n", $text);
+
+    /* Markdown-Codezaeune / unnoetige Leerzeichen entfernen. */
+    $text = preg_replace('/^```(?:text)?\s*/iu', '', $text);
+    $text = preg_replace('/\s*```$/u', '', $text);
+    $text = preg_replace('/[ \t]+\n/u', "\n", $text);
+    $text = preg_replace('/\n{3,}/u', "\n\n", $text);
     $text = trim($text);
 
     if ($text == '') {
         return '';
     }
 
+    /*
+     * Wenn Gemini bereits mindestens eine echte Leerzeile gesetzt hat,
+     * greifen wir nicht weiter ein.
+     */
     if (strpos($text, "\n\n") !== false) {
         return $text;
     }
 
-    $flat = preg_replace('/\\s*\\n\\s*/u', ' ', $text);
-    $flat = preg_replace('/[ \\t]{2,}/u', ' ', $flat);
+    /* Einzelne Zeilenumbrueche innerhalb einer Textwand normalisieren. */
+    $flat = preg_replace('/\s*\n\s*/u', ' ', $text);
+    $flat = preg_replace('/[ \t]{2,}/u', ' ', $flat);
     $flat = trim($flat);
 
+    /* Kurze Antworten brauchen keine kuenstliche Aufteilung. */
     $length = function_exists('mb_strlen')
         ? mb_strlen($flat, 'UTF-8')
         : strlen($flat);
@@ -197,7 +218,12 @@ function ensureReplyParagraphs($text)
         return $flat;
     }
 
-    $sentences = preg_split('/(?<=[.!?])\\s+(?=[A-ZÄÖÜ0-9])/u', $flat);
+    /*
+     * Saetze erkennen und jeweils hoechstens zwei Saetze pro Absatz
+     * gruppieren. Das verhindert lange Textwaende, ohne jeden Satz
+     * kuenstlich in einen eigenen Absatz zu setzen.
+     */
+    $sentences = preg_split('/(?<=[.!?])\s+(?=[A-ZÄÖÜ0-9])/u', $flat);
 
     if (!is_array($sentences) || count($sentences) < 4) {
         return $flat;
