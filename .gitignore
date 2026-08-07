@@ -1,0 +1,15 @@
+# Lokale Zugangsdaten niemals committen
+_private/config.php
+
+# Laufzeitdaten
+data/status.json
+data/update-cache.json
+data/update-backups/
+data/update-staging/
+
+# Temporäre Dateien / Backups
+*.zip
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
