@@ -39,6 +39,8 @@ index.php
 functions.php
 vehicle.php
 VERSION
+assets/
+lib/
 _private/
 data/
 ```
@@ -82,12 +84,15 @@ Wenn eine neue Version vorhanden ist, erscheint oben ein Update-Button. Beim Upd
 - `data/status.json`
 - persönliche Laufzeitdaten
 
-Automatisch aktualisiert werden aktuell ausschließlich:
+Automatisch aktualisiert werden ausschließlich die freigegebenen Programmdateien aus `update-manifest.json`, derzeit:
 
 - `index.php`
 - `functions.php`
 - `vehicle.php`
 - `VERSION`
+- `assets/app.css`
+- `assets/app.js`
+- `lib/*.php`
 
 ## Entwicklung
 
