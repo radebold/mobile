@@ -14,8 +14,15 @@ require_once __DIR__ . '/lib/update.php';
 
 /*
  * =========================================================
- * WhatsApp-Benachrichtigungen über ioBroker REST-API
- * -> sendTo('open-wa.0', 'send', {to: '...', text: '...'})
+ * WhatsApp-Benachrichtigungen über ioBroker
+ *
+ * Unterstützte Wege:
+ * 1) simple-api (z. B. Port 8087):
+ *    PHP schreibt JSON in einen ioBroker-Datenpunkt.
+ *    Ein kleines ioBroker-JavaScript ruft anschließend open-wa.0 auf.
+ *
+ * 2) rest-api:
+ *    PHP ruft /v1/command/sendTo direkt auf.
  * =========================================================
  */
 
@@ -74,7 +81,6 @@ function saveMobileNotifyState($state)
         @mkdir($dir, 0770, true);
     }
 
-    /* Nur die letzten 500 bekannten Nachrichten merken. */
     if (isset($state['seen']) && is_array($state['seen']) && count($state['seen']) > 500) {
         arsort($state['seen'], SORT_NUMERIC);
         $state['seen'] = array_slice($state['seen'], 0, 500, true);
@@ -109,27 +115,81 @@ function getMobileNotifyMessageKey($conversation, $message)
 
 function isWhatsAppNotifyEnabled($config)
 {
-    if (!is_array($config)) {
-        return false;
-    }
-
-    if (!isset($config['whatsapp_notify_enabled'])) {
+    if (!is_array($config) || !isset($config['whatsapp_notify_enabled'])) {
         return false;
     }
 
     $value = $config['whatsapp_notify_enabled'];
 
-    return $value === true || $value === 1 || $value === '1' || strtolower(trim(strval($value))) === 'true';
+    return $value === true ||
+        $value === 1 ||
+        $value === '1' ||
+        strtolower(trim(strval($value))) === 'true';
 }
 
 
-function ioBrokerRestSendOpenWa($config, $to, $text)
+function getIoBrokerApiMode($config)
+{
+    if (isset($config['iobroker_api_mode']) && trim($config['iobroker_api_mode']) != '') {
+        $mode = strtolower(trim($config['iobroker_api_mode']));
+
+        if ($mode == 'simple-api' || $mode == 'simple_api' || $mode == 'simple') {
+            return 'simple-api';
+        }
+
+        if ($mode == 'rest-api' || $mode == 'rest_api' || $mode == 'rest') {
+            return 'rest-api';
+        }
+    }
+
+    /*
+     * Kompatibilitäts-Automatik:
+     * Port 8087 ist der typische simple-api-Port.
+     * Sonst bleibt das bisherige Verhalten rest-api.
+     */
+    if (isset($config['iobroker_rest_url'])) {
+        $url = trim($config['iobroker_rest_url']);
+        $parts = @parse_url($url);
+
+        if (is_array($parts) && isset($parts['port']) && intval($parts['port']) == 8087) {
+            return 'simple-api';
+        }
+    }
+
+    return 'rest-api';
+}
+
+
+function applyIoBrokerCurlAuthentication($ch, $config, $headers)
+{
+    if (
+        isset($config['iobroker_rest_bearer_token']) &&
+        trim($config['iobroker_rest_bearer_token']) != ''
+    ) {
+        $headers[] = 'Authorization: Bearer ' . trim($config['iobroker_rest_bearer_token']);
+    } elseif (
+        isset($config['iobroker_rest_user']) &&
+        trim($config['iobroker_rest_user']) != ''
+    ) {
+        $user = trim($config['iobroker_rest_user']);
+        $pass = isset($config['iobroker_rest_password']) ? $config['iobroker_rest_password'] : '';
+
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($ch, CURLOPT_USERPWD, $user . ':' . $pass);
+    }
+
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+}
+
+
+function ioBrokerSimpleApiQueueOpenWa($config, $to, $text)
 {
     $result = array(
         'ok' => false,
         'error' => '',
         'http_code' => 0,
-        'response' => ''
+        'response' => '',
+        'mode' => 'simple-api'
     );
 
     if (!isset($config['iobroker_rest_url']) || trim($config['iobroker_rest_url']) == '') {
@@ -137,8 +197,84 @@ function ioBrokerRestSendOpenWa($config, $to, $text)
         return $result;
     }
 
-    if (trim($to) == '') {
-        $result['error'] = 'whatsapp_to fehlt.';
+    $stateId = '0_userdata.0.mobile.whatsapp.outgoing';
+    if (
+        isset($config['iobroker_simple_api_state']) &&
+        trim($config['iobroker_simple_api_state']) != ''
+    ) {
+        $stateId = trim($config['iobroker_simple_api_state']);
+    }
+
+    $baseUrl = rtrim(trim($config['iobroker_rest_url']), '/');
+    $url = $baseUrl . '/setValueFromBody/' . rawurlencode($stateId);
+
+    $payload = array(
+        'to' => trim($to),
+        'text' => $text,
+        'adapter' => isset($config['openwa_adapter']) && trim($config['openwa_adapter']) != ''
+            ? trim($config['openwa_adapter'])
+            : 'open-wa.0',
+        'source' => 'mobile.de-Verkaufszentrale',
+        'created' => date('c')
+    );
+
+    $bodyData = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    if ($bodyData === false) {
+        $result['error'] = 'WhatsApp-Payload konnte nicht als JSON erzeugt werden.';
+        return $result;
+    }
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $bodyData);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+    applyIoBrokerCurlAuthentication(
+        $ch,
+        $config,
+        array('Content-Type: text/plain; charset=utf-8')
+    );
+
+    $body = curl_exec($ch);
+
+    if ($body === false) {
+        $result['error'] = 'ioBroker simple-api nicht erreichbar: ' . curl_error($ch);
+        curl_close($ch);
+        return $result;
+    }
+
+    $httpCode = intval(curl_getinfo($ch, CURLINFO_HTTP_CODE));
+    curl_close($ch);
+
+    $result['http_code'] = $httpCode;
+    $result['response'] = $body;
+
+    if ($httpCode < 200 || $httpCode >= 300) {
+        $result['error'] = 'ioBroker simple-api HTTP ' . $httpCode . ': ' . trim($body);
+        return $result;
+    }
+
+    $result['ok'] = true;
+    return $result;
+}
+
+
+function ioBrokerRestApiSendOpenWa($config, $to, $text)
+{
+    $result = array(
+        'ok' => false,
+        'error' => '',
+        'http_code' => 0,
+        'response' => '',
+        'mode' => 'rest-api'
+    );
+
+    if (!isset($config['iobroker_rest_url']) || trim($config['iobroker_rest_url']) == '') {
+        $result['error'] = 'iobroker_rest_url fehlt.';
         return $result;
     }
 
@@ -169,34 +305,17 @@ function ioBrokerRestSendOpenWa($config, $to, $text)
     curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
     curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
 
-    if (
-        isset($config['iobroker_rest_bearer_token']) &&
-        trim($config['iobroker_rest_bearer_token']) != ''
-    ) {
-        curl_setopt(
-            $ch,
-            CURLOPT_HTTPHEADER,
-            array(
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . trim($config['iobroker_rest_bearer_token'])
-            )
-        );
-    } elseif (
-        isset($config['iobroker_rest_user']) &&
-        trim($config['iobroker_rest_user']) != ''
-    ) {
-        $user = trim($config['iobroker_rest_user']);
-        $pass = isset($config['iobroker_rest_password']) ? $config['iobroker_rest_password'] : '';
-        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_USERPWD, $user . ':' . $pass);
-    }
+    applyIoBrokerCurlAuthentication(
+        $ch,
+        $config,
+        array('Content-Type: application/json')
+    );
 
     $body = curl_exec($ch);
 
     if ($body === false) {
-        $result['error'] = 'ioBroker REST nicht erreichbar: ' . curl_error($ch);
+        $result['error'] = 'ioBroker REST-API nicht erreichbar: ' . curl_error($ch);
         curl_close($ch);
         return $result;
     }
@@ -208,7 +327,7 @@ function ioBrokerRestSendOpenWa($config, $to, $text)
     $result['response'] = $body;
 
     if ($httpCode < 200 || $httpCode >= 300) {
-        $result['error'] = 'ioBroker REST HTTP ' . $httpCode . ': ' . trim($body);
+        $result['error'] = 'ioBroker REST-API HTTP ' . $httpCode . ': ' . trim($body);
         return $result;
     }
 
@@ -220,6 +339,28 @@ function ioBrokerRestSendOpenWa($config, $to, $text)
 
     $result['ok'] = true;
     return $result;
+}
+
+
+function ioBrokerSendOpenWa($config, $to, $text)
+{
+    if (trim($to) == '') {
+        return array(
+            'ok' => false,
+            'error' => 'whatsapp_to fehlt.',
+            'http_code' => 0,
+            'response' => '',
+            'mode' => getIoBrokerApiMode($config)
+        );
+    }
+
+    $mode = getIoBrokerApiMode($config);
+
+    if ($mode == 'simple-api') {
+        return ioBrokerSimpleApiQueueOpenWa($config, $to, $text);
+    }
+
+    return ioBrokerRestApiSendOpenWa($config, $to, $text);
 }
 
 
@@ -258,7 +399,10 @@ function buildMobileWhatsAppNotification($config, $conversation, $message)
     $text = isset($message['text']) ? trim($message['text']) : '';
 
     $maxChars = 900;
-    if (isset($config['whatsapp_notify_message_max_chars']) && intval($config['whatsapp_notify_message_max_chars']) > 100) {
+    if (
+        isset($config['whatsapp_notify_message_max_chars']) &&
+        intval($config['whatsapp_notify_message_max_chars']) > 100
+    ) {
         $maxChars = intval($config['whatsapp_notify_message_max_chars']);
     }
 
@@ -323,6 +467,7 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
         'baseline_count' => 0,
         'new_count' => 0,
         'sent_count' => 0,
+        'api_mode' => getIoBrokerApiMode($config),
         'error' => ''
     );
 
@@ -338,7 +483,7 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
 
     if ($testMode) {
         $testText = "🚗 *mobile.de Verkaufszentrale*\n\nWhatsApp-Test erfolgreich ausgelöst.\nZeit: " . date('d.m.Y H:i:s');
-        $send = ioBrokerRestSendOpenWa($config, $config['whatsapp_to'], $testText);
+        $send = ioBrokerSendOpenWa($config, $config['whatsapp_to'], $testText);
 
         if (!$send['ok']) {
             $result['ok'] = false;
@@ -354,10 +499,7 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
     $items = collectMobileMessagesForNotify($conversations);
     $state['last_run'] = date('Y-m-d H:i:s');
 
-    /*
-     * Beim allerersten Lauf werden vorhandene alte Mails nur als Basis gespeichert.
-     * Dadurch kommen nach der Installation nicht plötzlich 20 alte WhatsApps.
-     */
+    /* Beim ersten Lauf nur Baseline setzen, keine alten WhatsApps senden. */
     if (empty($state['initialized'])) {
         foreach ($items as $item) {
             $key = getMobileNotifyMessageKey($item['conversation'], $item['message']);
@@ -390,7 +532,7 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
             $item['message']
         );
 
-        $send = ioBrokerRestSendOpenWa(
+        $send = ioBrokerSendOpenWa(
             $config,
             $config['whatsapp_to'],
             $text
@@ -404,7 +546,7 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
             break;
         }
 
-        /* Erst NACH erfolgreichem Versand als erledigt merken. */
+        /* Erst nach erfolgreicher Übergabe an ioBroker als gesehen merken. */
         $state['seen'][$key] = $item['timestamp'];
         $state['last_success'] = date('Y-m-d H:i:s');
         $state['last_error'] = '';
@@ -421,9 +563,11 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
  * =========================================================
  * Standalone-Aufruf für Synology Aufgabenplaner
  *
- * Beispiel:
- *   /mobile/functions.php?token=GEHEIMNIS
+ * Browser-Test:
  *   /mobile/functions.php?token=GEHEIMNIS&test=1
+ *
+ * Regulärer Check:
+ *   /mobile/functions.php?token=GEHEIMNIS
  * =========================================================
  */
 
