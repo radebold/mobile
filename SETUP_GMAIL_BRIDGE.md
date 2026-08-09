@@ -1,6 +1,6 @@
 # Gmail-Bridge einrichten
 
-Die NAS-Anwendung verwendet Google Apps Script, damit Antwortentwürfe als **echte Gmail-Entwürfe im bestehenden Thread** angelegt werden.
+Die NAS-Anwendung verwendet Google Apps Script, damit Antworten im bestehenden Gmail-Thread entweder als nativer Entwurf angelegt oder nach Bestätigung direkt versendet werden können.
 
 1. Google Apps Script öffnen und ein neues Projekt anlegen.
 2. Inhalt von `gmail-bridge.gs` in das Projekt kopieren.
@@ -15,5 +15,15 @@ Die NAS-Anwendung verwendet Google Apps Script, damit Antwortentwürfe als **ech
 $config['gmail_bridge_url'] = 'https://script.google.com/macros/s/DEINE_DEPLOYMENT_ID/exec';
 $config['gmail_bridge_token'] = 'DAS_GLEICHE_TOKEN_WIE_IM_SCRIPT';
 ```
+
+## Bridge aktualisieren
+
+Ab Version 2.10.0 unterstützt die Bridge zusätzlich die Aktion `sendReply`, die eine geprüfte Antwort direkt mit `GmailMessage.reply()` versendet und dabei den bestehenden Thread beibehält.
+
+Bei einer bereits eingerichteten Bridge muss die neue `gmail-bridge.gs` einmal in das bestehende Apps-Script-Projekt kopiert und anschließend neu bereitgestellt werden:
+
+**Bereitstellen → Bereitstellungen verwalten → Bearbeiten → Neue Version → Bereitstellen**
+
+Die Deployment-URL bleibt dabei normalerweise unverändert.
 
 Wichtig: `gmail-bridge.gs` enthält im Repository **kein echtes Token**. Zugangsdaten gehören nicht nach GitHub.
