@@ -7,7 +7,8 @@ Private Verkaufszentrale für mobile.de-/Kleinanzeigen-Anfragen zum VW Sharan.
 - Gmail per IMAP lesen und mobile.de-/Kleinanzeigen-Anfragen gruppieren
 - Antwortvorschläge mit Gemini erstellen
 - persönliche Hinweise pro Antwort berücksichtigen
-- echte Gmail-Antwortentwürfe über Google Apps Script erzeugen
+- geprüfte Antworten direkt über Gmail im bestehenden Thread versenden
+- optional weiterhin native Gmail-Entwürfe über die Bridge erzeugen
 - Gesprächsstatus verwalten
 - beantwortete Gespräche archivieren
 - Anfragen ohne weiteres Interesse in Gmail in den Papierkorb verschieben
@@ -16,7 +17,7 @@ Private Verkaufszentrale für mobile.de-/Kleinanzeigen-Anfragen zum VW Sharan.
 - automatische GitHub-Updateprüfung im Scheduler mit einmaligem WhatsApp-Hinweis je neuer Version
 - integriertes Self-Update direkt aus diesem GitHub-Repository
 
-Die Anwendung sendet keine Käuferantwort automatisch. Automatisch versendet werden optional nur interne WhatsApp-Benachrichtigungen über neue Anfragen und verfügbare Programmupdates.
+Eine Käuferantwort wird **nie ungeprüft automatisch versendet**. Der Nutzer prüft bzw. bearbeitet den von Gemini erzeugten Text und bestätigt anschließend ausdrücklich den Direktversand. Automatisch versendet werden optional nur interne WhatsApp-Benachrichtigungen über neue Anfragen und verfügbare Programmupdates.
 
 ## Voraussetzungen
 
@@ -25,7 +26,7 @@ Die Anwendung sendet keine Käuferantwort automatisch. Automatisch versendet wer
 - PHP-Erweiterungen: `curl`, `openssl`, `imap`, `json`, `mbstring`
 - Gmail mit App-Passwort für IMAP
 - Gemini API-Key
-- Google Apps Script Bridge für native Gmail-Entwürfe
+- Google Apps Script Bridge für Gmail-Antworten
 - für WhatsApp: ioBroker `simple-api.0` und der bestehende Ausgang `mqtt.0.whatsapp.outgoing`
 
 ## Installation auf der Synology
@@ -46,6 +47,10 @@ In `_private/config.php`:
 $config['gmail_bridge_url'] = 'https://script.google.com/macros/s/DEINE_DEPLOYMENT_ID/exec';
 $config['gmail_bridge_token'] = 'DEIN_GEHEIMES_TOKEN';
 ```
+
+Ab Version 2.10.0 muss die aktuelle `gmail-bridge.gs` im vorhandenen Apps-Script-Projekt bereitgestellt sein. Sie unterstützt neben `createDraftReply` auch `sendReply`. Der Direktversand nutzt offiziell `GmailMessage.reply()`, damit die Antwort an die Reply-To-Adresse der konkreten Nachricht geht und im selben Thread bleibt.
+
+Nach Änderungen an `gmail-bridge.gs`: **Bereitstellen → Bereitstellungen verwalten → Bearbeiten → Neue Version → Bereitstellen**.
 
 ## WhatsApp-Benachrichtigung
 
