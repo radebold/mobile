@@ -1,7 +1,7 @@
 {
-  "version": "2.9.1",
-  "released": "2026-08-07",
-  "notes": "Testversion zur Prüfung der automatischen WhatsApp-Benachrichtigung bei einer neu verfügbaren Version.",
+  "version": "2.10.0",
+  "released": "2026-08-09",
+  "notes": "Antworten können nach Prüfung jetzt direkt aus der Verkaufszentrale über Gmail versendet werden. Nach erfolgreichem Versand wird das Gespräch automatisch als beantwortet markiert und archiviert. WICHTIG: Für den Direktversand muss die aktuelle gmail-bridge.gs einmal im bestehenden Google-Apps-Script-Projekt als neue Version bereitgestellt werden.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -18,7 +18,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "dedcc7d4335da09214ca036d5fdf9473a45f1682"
+      "blob_sha": "10c2c0c3d62137a46deee939bc5e6ad677a518c5"
     },
     {
       "path": "assets/app.css",
@@ -26,7 +26,7 @@
     },
     {
       "path": "assets/app.js",
-      "blob_sha": "16e69efb30afa58ab4f64827361387c77674b89c"
+      "blob_sha": "99864221f40a0b28994dc001d9660dd6172070b0"
     },
     {
       "path": "lib/mail.php",
@@ -38,7 +38,7 @@
     },
     {
       "path": "lib/gmail.php",
-      "blob_sha": "9d8a689fb3a233d3d02dded17d68572911481480"
+      "blob_sha": "2ef02c9de60e02254104388e1e78a911b5b8ac28"
     },
     {
       "path": "lib/state.php",
