@@ -4,9 +4,9 @@
  * Google Apps Script
  *
  * Zweck:
- * - echten Gmail-Entwurf erstellen
- * - als Antwort auf die konkrete mobile.de-Nachricht
- * - KEIN automatischer Versand
+ * - nativen Gmail-Entwurf als Antwort erstellen
+ * - oder eine gepruefte Antwort direkt versenden
+ * - immer als Antwort auf die konkrete mobile.de-Nachricht
  * =========================================================
  */
 
@@ -17,7 +17,7 @@ function doGet(e) {
   return jsonResponse({
     ok: true,
     service: 'mobile.de Gmail Bridge',
-    version: '1.0'
+    version: '1.1'
   });
 }
 
@@ -37,7 +37,7 @@ function doPost(e) {
       });
     }
 
-    if (data.action !== 'createDraftReply') {
+    if (data.action !== 'createDraftReply' && data.action !== 'sendReply') {
       return jsonResponse({
         ok: false,
         error: 'Unbekannte Aktion.'
@@ -68,10 +68,31 @@ function doPost(e) {
       options.name = String(data.seller_name);
     }
 
+    if (data.action === 'sendReply') {
+      /*
+       * reply() versendet die Antwort direkt an die Reply-To-Adresse
+       * der konkreten Gmail-Nachricht und haelt sie im selben Thread.
+       */
+      var thread = target.getThread();
+      target.reply(body, options);
+      thread.refresh();
+
+      var messages = thread.getMessages();
+      var latest = messages.length ? messages[messages.length - 1] : null;
+
+      return jsonResponse({
+        ok: true,
+        sent: true,
+        thread_id: thread.getId(),
+        message_id: latest ? latest.getId() : '',
+        subject: latest ? latest.getSubject() : target.getSubject(),
+        recipient: String(data.sender_email || '')
+      });
+    }
+
     /*
-     * Entscheidend: createDraftReply() erzeugt einen NATIVEN Gmail-Entwurf
-     * als Antwort auf genau diese Nachricht. Kein IMAP-Label und kein
-     * nachgebauter MIME-Entwurf.
+     * createDraftReply() erzeugt einen NATIVEN Gmail-Entwurf
+     * als Antwort auf genau diese Nachricht.
      */
     var draft = target.createDraftReply(body, options);
 
