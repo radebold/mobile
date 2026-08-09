@@ -269,8 +269,106 @@ function initWhatsAppSystemStatus() {
     window.setInterval(refreshWhatsAppStatus, 60000);
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initWhatsAppSystemStatus);
-} else {
+function sendGmailReplyDirect(button) {
+    if (!button || !button.form || !window.fetch || !window.FormData) return;
+
+    var form = button.form;
+    var draft = form.querySelector('textarea[name="draft"]');
+    var key = form.querySelector('input[name="conversation_key"]');
+    var csrf = form.querySelector('input[name="csrf"]');
+
+    if (!draft || !key || !csrf) {
+        alert('Die Antwortdaten konnten nicht gelesen werden. Bitte Seite neu laden.');
+        return;
+    }
+
+    var text = String(draft.value || '').trim();
+    if (!text) {
+        alert('Der Antworttext ist leer.');
+        return;
+    }
+
+    var ok = window.confirm(
+        'Antwort jetzt direkt senden?\n\n' +
+        'Die Nachricht wird sofort über Gmail an den Interessenten verschickt.\n' +
+        'Danach wird das Gespräch als beantwortet markiert und archiviert.'
+    );
+
+    if (!ok) return;
+
+    var data = new FormData();
+    data.append('csrf', csrf.value);
+    data.append('conversation_key', key.value);
+    data.append('draft', text);
+
+    var oldText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Wird gesendet …';
+
+    fetch('lib/gmail.php?send_reply=1&_=' + Date.now(), {
+        method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: data
+    })
+        .then(function (response) {
+            return response.json().then(function (payload) {
+                if (!response.ok || !payload.ok || !payload.sent) {
+                    throw new Error(payload && payload.error ? payload.error : 'HTTP ' + response.status);
+                }
+                return payload;
+            });
+        })
+        .then(function (payload) {
+            button.textContent = 'Gesendet ✓';
+
+            if (payload.warning) {
+                window.alert(payload.warning);
+            }
+
+            window.setTimeout(function () {
+                window.location.href = 'index.php';
+            }, 500);
+        })
+        .catch(function (error) {
+            button.disabled = false;
+            button.textContent = oldText;
+            window.alert('Antwort konnte nicht gesendet werden:\n\n' + (error.message || error));
+        });
+}
+
+function initDirectGmailSendButtons() {
+    var buttons = document.querySelectorAll('button[name="action"][value="create_gmail_draft"]');
+
+    for (var i = 0; i < buttons.length; i++) {
+        var button = buttons[i];
+        button.type = 'button';
+        button.removeAttribute('name');
+        button.removeAttribute('value');
+        button.removeAttribute('onclick');
+        button.textContent = 'Direkt senden';
+        button.title = 'Geprüfte Antwort jetzt direkt über Gmail senden';
+        button.onclick = (function (currentButton) {
+            return function () {
+                sendGmailReplyDirect(currentButton);
+            };
+        })(button);
+
+        var card = button.closest ? button.closest('.draft-card') : null;
+        if (card) {
+            var state = card.querySelector('.draft-state');
+            if (state) state.textContent = 'prüfen · bearbeiten · direkt senden';
+        }
+    }
+}
+
+function initMobileSalesCenter() {
     initWhatsAppSystemStatus();
+    initDirectGmailSendButtons();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMobileSalesCenter);
+} else {
+    initMobileSalesCenter();
 }
