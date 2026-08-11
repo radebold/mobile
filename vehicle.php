@@ -18,15 +18,29 @@ $vehicle = array(
     'title' => 'Volkswagen VW Sharan 2.0 TDI 177 PS Highline-Ausstattung',
     'price' => '17.490 EUR',
     'mileage' => 'ca. 138.000 km',
-    'first_registration' => '04/2015',
-    'power' => '177 PS',
+    'first_registration' => '24.04.2015',
+    'power' => '130 kW / 177 PS',
     'engine' => '2.0 TDI',
+    'displacement' => '1.968 cm³',
     'fuel' => 'Diesel',
     'transmission' => 'DSG / Automatik 6-Gang',
     'emissions_class' => 'Euro 5',
     'color' => 'Oryxweiß Perlmutteffekt',
     'doors' => '5',
     'seats' => '7',
+
+    'technical_data' => array(
+        'Hubraum: 1.968 cm³.',
+        'Leistung: 130 kW / 177 PS.',
+        '6-Gang-DSG / Automatik.',
+        'Kraftstoff: Diesel.',
+        'Abgasnorm: Euro 5.',
+        '5 Türen.',
+        '7 Sitzplätze.',
+        'Farbe: Oryxweiß Perlmutteffekt.',
+        'Verbrauch laut ursprünglichem Fahrzeugdatenblatt: innerorts 6,7 l/100 km, außerorts 5,4 l/100 km, kombiniert 5,9 l/100 km.',
+        'CO₂-Emission laut ursprünglichem Fahrzeugdatenblatt: 154 g/km.'
+    ),
 
     'ownership' => array(
         'Wir sind die 2. Besitzer.',
@@ -66,8 +80,12 @@ $vehicle = array(
 
     'terminology' => array(
         'Panoramadach, Panorama-Schiebedach, Pano und Schiebedach meinen bei diesem Fahrzeug dieselbe vorhandene Ausstattung.',
+        'Leder, Lederausstattung und Vienna meinen die vorhandene Lederausstattung Vienna.',
+        'Xenon und Bi-Xenon meinen die vorhandenen Bi-Xenon-Scheinwerfer.',
+        'PDC, Einparkhilfe und Parkassistenz beziehen sich auf die vorhandene Einparkhilfe / Parkassistenz.',
         'AHK und Anhängerkupplung meinen die elektrisch schwenkbare Anhängerkupplung.',
-        'DSG und Automatik meinen das vorhandene 6-Gang-DSG.'
+        'DSG und Automatik meinen das vorhandene 6-Gang-DSG.',
+        '7-Sitzer und 7 Sitze meinen die vorhandenen sieben Sitzplätze.'
     ),
 
     'tires' => array(
