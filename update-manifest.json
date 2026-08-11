@@ -1,7 +1,7 @@
 {
-  "version": "2.10.1",
+  "version": "2.10.2",
   "released": "2026-08-11",
-  "notes": "Die nicht verifizierte Angabe 'Matrix-LED-Licht' wurde aus der Fahrzeug-Wissensbasis entfernt. Gemini verwendet diese Ausstattung künftig nicht mehr in Antworten, solange sie nicht sicher bestätigt ist.",
+  "notes": "Der Angebotspreis in der Fahrzeug-Wissensbasis wurde auf 17.490 EUR aktualisiert. Gemini verwendet damit bei Preisfragen künftig den aktuellen Verkaufspreis.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -14,11 +14,11 @@
     },
     {
       "path": "vehicle.php",
-      "blob_sha": "47e198aeb44a9da92a2a72dcc530c7d53934c1ed"
+      "blob_sha": "76247ed4ec633672a47859605d0f4487b08c2b02"
     },
     {
       "path": "VERSION",
-      "blob_sha": "8bbb6e406a7332cc0a8793e19dae32dc6fc1c0d4"
+      "blob_sha": "c6436a8536667d867293684ba9d16e39121a5d67"
     },
     {
       "path": "assets/app.css",
