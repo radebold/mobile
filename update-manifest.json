@@ -1,12 +1,12 @@
 {
-  "version": "2.10.2",
+  "version": "2.11.0",
   "released": "2026-08-11",
-  "notes": "Der Angebotspreis in der Fahrzeug-Wissensbasis wurde auf 17.490 EUR aktualisiert. Gemini verwendet damit bei Preisfragen künftig den aktuellen Verkaufspreis.",
+  "notes": "Folgefragen werden jetzt sauber von früheren Käuferfragen getrennt: neue Nachrichten verwerfen alte Antwortentwürfe und persönliche Hinweise automatisch, der Verlauf zeigt nur ältere Nachrichten eingeklappt, und Gemini beantwortet ausschließlich die aktuelle Käuferfrage. Die Fahrzeug-Wissensbasis wurde um die verifizierte Ausstattung inkl. Panorama-Schiebedach, Vienna-Leder, Bi-Xenon, Navigation, Parkhilfe und 7 Sitze erweitert.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
       "path": "index.php",
-      "blob_sha": "3206a31ceab1d7334c26850e25b75363715ff618"
+      "blob_sha": "d774c94d205713909e4df8cd8e1f2221897250b4"
     },
     {
       "path": "functions.php",
@@ -14,11 +14,11 @@
     },
     {
       "path": "vehicle.php",
-      "blob_sha": "76247ed4ec633672a47859605d0f4487b08c2b02"
+      "blob_sha": "104db5e9da796ac436223f666230df194af4faf2"
     },
     {
       "path": "VERSION",
-      "blob_sha": "c6436a8536667d867293684ba9d16e39121a5d67"
+      "blob_sha": "46b81d815a23b1a6b60bc9160f21295a5f9e4e75"
     },
     {
       "path": "assets/app.css",
@@ -34,7 +34,7 @@
     },
     {
       "path": "lib/ai.php",
-      "blob_sha": "687a497a0708c4992cb5b768161c4ac643372cb7"
+      "blob_sha": "404c7e525dd0838cbe278835a00496dca22149d1"
     },
     {
       "path": "lib/gmail.php",
