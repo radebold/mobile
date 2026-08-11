@@ -45,7 +45,6 @@ $vehicle = array(
     ),
 
     'equipment' => array(
-        'Matrix-LED-Licht.',
         'Standheizung.',
         'Elektrisch schwenkbare Anhängerkupplung.',
         'Zwei integrierte Kindersitze mit separaten Kopf- und Schulterstützen.',
