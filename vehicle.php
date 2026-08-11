@@ -21,7 +21,12 @@ $vehicle = array(
     'first_registration' => '04/2015',
     'power' => '177 PS',
     'engine' => '2.0 TDI',
-    'transmission' => 'DSG',
+    'fuel' => 'Diesel',
+    'transmission' => 'DSG / Automatik 6-Gang',
+    'emissions_class' => 'Euro 5',
+    'color' => 'Oryxweiß Perlmutteffekt',
+    'doors' => '5',
+    'seats' => '7',
 
     'ownership' => array(
         'Wir sind die 2. Besitzer.',
@@ -45,10 +50,24 @@ $vehicle = array(
     ),
 
     'equipment' => array(
+        'Highline-Ausstattung.',
+        'Panorama-Schiebedach vorhanden.',
+        'Lederausstattung Vienna.',
+        'Bi-Xenon-Scheinwerfer.',
+        'Navigationssystem.',
+        'Einparkhilfe / Parkassistenz.',
+        'Klima-Paket.',
+        '7 Sitze.',
         'Standheizung.',
         'Elektrisch schwenkbare Anhängerkupplung.',
         'Zwei integrierte Kindersitze mit separaten Kopf- und Schulterstützen.',
         'Zwei Fahrzeugschlüssel vorhanden.'
+    ),
+
+    'terminology' => array(
+        'Panoramadach, Panorama-Schiebedach, Pano und Schiebedach meinen bei diesem Fahrzeug dieselbe vorhandene Ausstattung.',
+        'AHK und Anhängerkupplung meinen die elektrisch schwenkbare Anhängerkupplung.',
+        'DSG und Automatik meinen das vorhandene 6-Gang-DSG.'
     ),
 
     'tires' => array(
