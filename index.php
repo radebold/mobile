@@ -12,12 +12,10 @@
  * - Nachrichtentext bereinigen
  * - Gemini Antwortentwurf erstellen
  * - Entwurf lokal speichern / bearbeiten
- * - Gmail-Entwurf im passenden mobile.de-Thread anlegen
+ * - Gmail-Antwort im passenden mobile.de-Thread versenden
  * - Status lokal verwalten
  * - Bei „Beantwortet / gesendet“ Gmail-Nachrichten archivieren und ausblenden
  * - Bei „Kein Interesse“ Gmail-Nachrichten in den Papierkorb verschieben
- *
- * Kein automatisches Senden.
  * =========================================================
  */
 
@@ -97,12 +95,170 @@ if (isset($_GET['conversation'])) {
 
 /*
  * ---------------------------------------------------------
+ * Nachrichten-/Entwurfs-Zuordnung
+ * ---------------------------------------------------------
+ */
+
+function mobileUiMessageStateKey($message)
+{
+    if (!is_array($message)) {
+        return '';
+    }
+
+    if (isset($message['message_id']) && trim($message['message_id']) != '') {
+        return sha1('mid|' . trim($message['message_id']));
+    }
+
+    if (isset($message['uid']) && intval($message['uid']) > 0) {
+        return sha1('uid|' . intval($message['uid']));
+    }
+
+    $timestamp = isset($message['timestamp']) ? intval($message['timestamp']) : 0;
+    $text = isset($message['text']) ? strval($message['text']) : '';
+
+    return sha1('fallback|' . $timestamp . '|' . $text);
+}
+
+
+function mobileUiSyncConversationState(&$state, $key, $conversation)
+{
+    $latest = getLatestMessage($conversation);
+
+    if (!is_array($latest)) {
+        return false;
+    }
+
+    $latestKey = mobileUiMessageStateKey($latest);
+    $latestTs = isset($latest['timestamp']) ? intval($latest['timestamp']) : 0;
+    $local = getConversationState($state, $key);
+    $knownKey = isset($local['last_incoming_message_key'])
+        ? trim($local['last_incoming_message_key'])
+        : '';
+
+    $status = isset($local['status']) && $local['status'] != ''
+        ? validStatus($local['status'])
+        : '';
+
+    $newIncoming = false;
+
+    if ($knownKey != '' && $latestKey != '' && $knownKey !== $latestKey) {
+        $newIncoming = true;
+    }
+
+    /* Migration alter Statusdaten ohne gespeicherten Message-Key. */
+    if ($knownKey == '') {
+        if (
+            $status == 'beantwortet' &&
+            isset($local['answered_at_ts']) &&
+            intval($local['answered_at_ts']) > 0 &&
+            $latestTs > intval($local['answered_at_ts'])
+        ) {
+            $newIncoming = true;
+        }
+
+        if (
+            $status == 'erledigt' &&
+            isset($local['no_interest_at_ts']) &&
+            intval($local['no_interest_at_ts']) > 0 &&
+            $latestTs > intval($local['no_interest_at_ts'])
+        ) {
+            $newIncoming = true;
+        }
+
+        if (!$newIncoming && isset($local['draft']) && trim($local['draft']) != '') {
+            $draftForKey = isset($local['draft_for_message_key'])
+                ? trim($local['draft_for_message_key'])
+                : '';
+
+            if ($draftForKey != '' && $latestKey != '' && $draftForKey !== $latestKey) {
+                $newIncoming = true;
+            } elseif (
+                $draftForKey == '' &&
+                isset($local['draft_updated']) &&
+                trim($local['draft_updated']) != ''
+            ) {
+                $draftTs = @strtotime($local['draft_updated']);
+                if ($draftTs !== false && $latestTs > intval($draftTs)) {
+                    $newIncoming = true;
+                }
+            }
+        }
+    }
+
+    $values = array(
+        'last_incoming_message_key' => $latestKey,
+        'last_incoming_ts' => $latestTs
+    );
+
+    if ($newIncoming) {
+        /*
+         * Ein alter Antwortentwurf darf niemals unter einer neuen Käuferfrage
+         * weiter angezeigt werden. Persönliche Hinweise gelten ebenfalls nur
+         * für genau die Antwort, für die sie eingegeben wurden.
+         */
+        $values = array_merge(
+            $values,
+            array(
+                'status' => 'neu',
+                'draft' => '',
+                'draft_updated' => '',
+                'draft_for_message_key' => '',
+                'draft_for_message_date' => '',
+                'reply_hint' => '',
+                'gmail_draft_created' => '',
+                'gmail_draft_verified' => '',
+                'gmail_draft_id' => '',
+                'gmail_draft_thread_id' => '',
+                'gmail_draft_recipient' => '',
+                'answered_at' => '',
+                'answered_at_ts' => 0,
+                'no_interest_at' => '',
+                'no_interest_at_ts' => 0
+            )
+        );
+    }
+
+    $changed = false;
+
+    foreach ($values as $name => $value) {
+        if (!isset($local[$name]) || strval($local[$name]) !== strval($value)) {
+            $changed = true;
+            break;
+        }
+    }
+
+    if ($changed) {
+        setConversationState($state, $key, $values);
+    }
+
+    return $changed;
+}
+
+
+/*
+ * ---------------------------------------------------------
  * Gmail lesen
  * ---------------------------------------------------------
  */
 
 $mailResult = loadMobileConversations($config);
 $conversations = $mailResult['conversations'];
+
+/*
+ * Vor jeder Anzeige prüfen, ob zu einem bekannten Interessenten inzwischen
+ * eine neue Nachricht eingegangen ist. Alte Entwürfe werden dabei verworfen.
+ */
+$stateChangedByIncoming = false;
+
+foreach ($conversations as $syncKey => $syncConversation) {
+    if (mobileUiSyncConversationState($state, $syncKey, $syncConversation)) {
+        $stateChangedByIncoming = true;
+    }
+}
+
+if ($stateChangedByIncoming) {
+    saveAppState($state);
+}
 
 
 /*
@@ -155,14 +311,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $flashMessage = 'Das Gespräch wurde nicht gefunden. Bitte aktualisieren.';
             } else {
 
+                $latestForDraft = getLatestMessage($conversations[$key]);
+                $draftMessageKey = mobileUiMessageStateKey($latestForDraft);
+                $draftMessageDate = is_array($latestForDraft) && isset($latestForDraft['date'])
+                    ? $latestForDraft['date']
+                    : '';
+
                 if ($action == 'generate') {
 
                 $replyHint = isset($_POST['reply_hint']) ? trim($_POST['reply_hint']) : '';
 
-                /*
-                 * Den persoenlichen Hinweis pro Gespraech merken. So bleibt er
-                 * bei einer erneuten Antwortgenerierung erhalten.
-                 */
                 setConversationState(
                     $state,
                     $key,
@@ -186,6 +344,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'status' => 'entwurf',
                             'draft' => $gemini['text'],
                             'draft_updated' => date('Y-m-d H:i:s'),
+                            'draft_for_message_key' => $draftMessageKey,
+                            'draft_for_message_date' => $draftMessageDate,
                             'reply_hint' => $replyHint
                         )
                     );
@@ -212,7 +372,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     array(
                         'status' => $draft != '' ? 'entwurf' : 'offen',
                         'draft' => $draft,
-                        'draft_updated' => date('Y-m-d H:i:s')
+                        'draft_updated' => date('Y-m-d H:i:s'),
+                        'draft_for_message_key' => $draft != '' ? $draftMessageKey : '',
+                        'draft_for_message_date' => $draft != '' ? $draftMessageDate : ''
                     )
                 );
 
@@ -228,17 +390,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $draft = isset($_POST['draft']) ? trim($_POST['draft']) : '';
 
-                /*
-                 * Den aktuell sichtbaren Text zuerst lokal sichern, damit
-                 * auch manuelle Änderungen vor dem Gmail-Entwurf erhalten bleiben.
-                 */
                 setConversationState(
                     $state,
                     $key,
                     array(
                         'status' => $draft != '' ? 'entwurf' : 'offen',
                         'draft' => $draft,
-                        'draft_updated' => date('Y-m-d H:i:s')
+                        'draft_updated' => date('Y-m-d H:i:s'),
+                        'draft_for_message_key' => $draft != '' ? $draftMessageKey : '',
+                        'draft_for_message_date' => $draft != '' ? $draftMessageDate : ''
                     )
                 );
 
@@ -261,6 +421,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 'status' => 'entwurf',
                                 'draft' => $draft,
                                 'draft_updated' => date('Y-m-d H:i:s'),
+                                'draft_for_message_key' => $draftMessageKey,
+                                'draft_for_message_date' => $draftMessageDate,
                                 'gmail_draft_created' => date('Y-m-d H:i:s'),
                                 'gmail_draft_verified' => !empty($gmailDraft['verified']) ? '1' : '0',
                                 'gmail_draft_id' => isset($gmailDraft['draft_id']) ? $gmailDraft['draft_id'] : '',
@@ -291,15 +453,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($status == 'beantwortet') {
 
-                    /*
-                     * "Beantwortet / gesendet":
-                     * - aktuelle mobile.de-Mails dieses Gesprächs in Gmail archivieren
-                     * - Gespräch lokal ausblenden
-                     * - lokalen Entwurf behalten
-                     *
-                     * Kommt später eine neue Käufernachricht, wird das Gespräch
-                     * automatisch wieder als "Neu" aktiviert.
-                     */
                     $archiveResult = moveConversationToGmailArchive(
                         $config,
                         $conversations[$key]
@@ -310,6 +463,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $key,
                         array(
                             'status' => 'beantwortet',
+                            'reply_hint' => '',
                             'answered_at' => date('Y-m-d H:i:s'),
                             'answered_at_ts' => time()
                         )
@@ -333,14 +487,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 } elseif ($status == 'erledigt') {
 
-                    /*
-                     * "Kein Interesse":
-                     * - aktuelle mobile.de-Mails dieses Gesprächs in Gmail in den Papierkorb verschieben
-                     * - Gespräch lokal ausblenden
-                     * - lokalen Entwurf verwerfen
-                     *
-                     * Die mobile.de-Plattform selbst wird dabei NICHT verändert.
-                     */
                     $trashResult = moveConversationToGmailTrash(
                         $config,
                         $conversations[$key]
@@ -353,6 +499,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'status' => 'erledigt',
                             'draft' => '',
                             'draft_updated' => '',
+                            'draft_for_message_key' => '',
+                            'draft_for_message_date' => '',
+                            'reply_hint' => '',
                             'no_interest_at' => date('Y-m-d H:i:s'),
                             'no_interest_at_ts' => time()
                         )
@@ -422,48 +571,6 @@ foreach ($conversations as $key => $conversation) {
         ? validStatus($local['status'])
         : ($conversation['unread'] ? 'neu' : 'offen');
 
-    /*
-     * Kommt nach einem abgeschlossenen Gespräch eine neue Nachricht,
-     * wird es automatisch wieder als "Neu" aktiviert.
-     */
-    $reactivateAfterTs = 0;
-
-    if (
-        $status == 'beantwortet' &&
-        isset($local['answered_at_ts']) &&
-        intval($local['answered_at_ts']) > 0
-    ) {
-        $reactivateAfterTs = intval($local['answered_at_ts']);
-    } elseif (
-        $status == 'erledigt' &&
-        isset($local['no_interest_at_ts']) &&
-        intval($local['no_interest_at_ts']) > 0
-    ) {
-        $reactivateAfterTs = intval($local['no_interest_at_ts']);
-    }
-
-    if (
-        $reactivateAfterTs > 0 &&
-        isset($conversation['latest_ts']) &&
-        intval($conversation['latest_ts']) > $reactivateAfterTs
-    ) {
-        $status = 'neu';
-
-        setConversationState(
-            $state,
-            $key,
-            array(
-                'status' => 'neu',
-                'answered_at' => '',
-                'answered_at_ts' => 0,
-                'no_interest_at' => '',
-                'no_interest_at_ts' => 0
-            )
-        );
-
-        saveAppState($state);
-    }
-
     if ($status == 'beantwortet' || $status == 'erledigt') {
         continue;
     }
@@ -525,10 +632,6 @@ $updateInfo = getGitHubUpdateInfo(
     $forceUpdateCheck
 );
 
-/*
- * Bei einer manuellen Prüfung zeigen wir IMMER sichtbar das Ergebnis.
- * Damit wirkt der Link „prüfen“ nicht mehr so, als wäre nichts passiert.
- */
 if ($forceUpdateCheck && $flashMessage == '') {
     if (!empty($updateInfo['ok'])) {
         $flashType = 'success';
@@ -594,7 +697,7 @@ if (
         <div class="system-status">
             <div class="system-title">System</div>
             <div class="system-row"><span class="system-dot <?php echo $mailResult['ok'] ? 'ok' : 'bad'; ?>"></span> Gmail</div>
-            <div class="system-row"><span class="system-dot <?php echo $gmailBridgeConfigured ? 'ok' : 'bad'; ?>"></span> Entwürfe</div>
+            <div class="system-row"><span class="system-dot <?php echo $gmailBridgeConfigured ? 'ok' : 'bad'; ?>"></span> Gmail Bridge</div>
             <div class="system-row"><span class="system-dot <?php echo $geminiConfigured ? 'ok' : 'bad'; ?>"></span> Gemini</div>
             <div class="system-row"><span class="system-dot <?php echo $dataWritable ? 'ok' : 'bad'; ?>"></span> Speicher</div>
             <div class="system-row">
@@ -657,6 +760,10 @@ if (
                 if ($status == 'beantwortet' || $status == 'erledigt') { continue; }
                 $displayName = $conversation['name'] != '' ? $conversation['name'] : 'Interessent';
                 $initial = strtoupper(substr($displayName, 0, 1));
+                $historyMessages = array();
+                if (isset($conversation['messages']) && count($conversation['messages']) > 1) {
+                    $historyMessages = array_slice($conversation['messages'], 0, count($conversation['messages']) - 1);
+                }
             ?>
 
             <article class="thread-card<?php echo $isSelected ? ' selected' : ''; ?>" id="c-<?php echo h($key); ?>">
@@ -676,7 +783,7 @@ if (
                 <div class="thread-body">
                     <?php if ($latest) { ?>
                         <div class="message-panel">
-                            <div class="message-date">Neueste Nachricht · <?php echo h($latest['date']); ?></div>
+                            <div class="message-date">Aktuelle Käuferfrage · <?php echo h($latest['date']); ?></div>
                             <?php echo h($latest['text']); ?>
                         </div>
                     <?php } ?>
@@ -718,13 +825,13 @@ if (
                         </form>
                     </div>
 
-                    <?php if (count($conversation['messages']) > 1) { ?>
-                        <details class="history-details"<?php echo $isSelected ? ' open' : ''; ?>>
-                            <summary>Verlauf · <?php echo intval(count($conversation['messages'])); ?> Nachrichten</summary>
-                            <?php foreach ($conversation['messages'] as $historyMessage) { ?>
+                    <?php if (count($historyMessages) > 0) { ?>
+                        <details class="history-details">
+                            <summary>Vorherige Käufernachrichten · <?php echo intval(count($historyMessages)); ?></summary>
+                            <?php foreach ($historyMessages as $historyMessage) { ?>
                                 <div class="history-item">
                                     <div class="message-panel">
-                                        <div class="message-date"><?php echo h($historyMessage['date']); ?></div>
+                                        <div class="message-date">Vorherige Nachricht · <?php echo h($historyMessage['date']); ?></div>
                                         <?php echo h($historyMessage['text']); ?>
                                     </div>
                                 </div>
@@ -735,8 +842,8 @@ if (
                     <?php if ($draft != '') { ?>
                         <div class="draft-card">
                             <div class="draft-head">
-                                <div class="draft-title">Antwortentwurf</div>
-                                <div class="draft-state">prüfen · bearbeiten · in Gmail speichern</div>
+                                <div class="draft-title">Antwort auf die aktuelle Käuferfrage</div>
+                                <div class="draft-state">prüfen · bearbeiten · direkt senden</div>
                             </div>
                             <div class="draft-body">
                                 <form method="post" action="index.php?conversation=<?php echo h($key); ?>#c-<?php echo h($key); ?>">
@@ -749,6 +856,10 @@ if (
                                         <button type="button" class="btn btn-dark" onclick="copyDraft('draft-<?php echo h($key); ?>', this);">Kopieren</button>
                                     </div>
                                 </form>
+
+                                <?php if (isset($local['draft_for_message_date']) && $local['draft_for_message_date'] != '') { ?>
+                                    <div class="small-note">Erstellt für die Käufernachricht vom <?php echo h($local['draft_for_message_date']); ?></div>
+                                <?php } ?>
 
                                 <?php if (isset($local['draft_updated']) && $local['draft_updated'] != '') { ?>
                                     <div class="small-note">Lokal gespeichert: <?php echo h($local['draft_updated']); ?></div>
@@ -769,7 +880,7 @@ if (
         <?php } ?>
         </div>
 
-        <div class="footer">Version <?php echo h(MOBILE_APP_VERSION); ?> · PHP <?php echo h(PHP_VERSION); ?> · GitHub-Updates aktiv · kein automatischer Versand</div>
+        <div class="footer">Version <?php echo h(MOBILE_APP_VERSION); ?> · PHP <?php echo h(PHP_VERSION); ?> · GitHub-Updates aktiv · Direktversand nur nach Bestätigung</div>
     </main>
 </div>
 
