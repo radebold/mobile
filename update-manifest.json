@@ -1,7 +1,7 @@
 {
-  "version": "2.11.0",
+  "version": "2.12.0",
   "released": "2026-08-11",
-  "notes": "Folgefragen werden jetzt sauber von früheren Käuferfragen getrennt: neue Nachrichten verwerfen alte Antwortentwürfe und persönliche Hinweise automatisch, der Verlauf zeigt nur ältere Nachrichten eingeklappt, und Gemini beantwortet ausschließlich die aktuelle Käuferfrage. Die Fahrzeug-Wissensbasis wurde um die verifizierte Ausstattung inkl. Panorama-Schiebedach, Vienna-Leder, Bi-Xenon, Navigation, Parkhilfe und 7 Sitze erweitert.",
+  "notes": "Die Fahrzeug-Wissensbasis wurde systematisch erweitert: exaktes Erstzulassungsdatum, 130 kW/177 PS, 1.968 cm³, Diesel, 6-Gang-DSG, Euro 5, Oryxweiß, 5 Türen, 7 Sitze sowie die Verbrauchs- und CO₂-Werte aus dem ursprünglichen Fahrzeugdatenblatt. Ausstattung und Synonyme wurden vervollständigt, und Gemini erhält jetzt auch diese technischen Daten ausdrücklich als Wissensbasis.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -14,11 +14,11 @@
     },
     {
       "path": "vehicle.php",
-      "blob_sha": "104db5e9da796ac436223f666230df194af4faf2"
+      "blob_sha": "0bfd023b819dbfd3f64cb25fd98881da610fff75"
     },
     {
       "path": "VERSION",
-      "blob_sha": "46b81d815a23b1a6b60bc9160f21295a5f9e4e75"
+      "blob_sha": "d8b698973a4918eb7d323228992b517d7c249f4a"
     },
     {
       "path": "assets/app.css",
@@ -34,7 +34,7 @@
     },
     {
       "path": "lib/ai.php",
-      "blob_sha": "404c7e525dd0838cbe278835a00496dca22149d1"
+      "blob_sha": "30f3e9a443caeeaf7d03f02b56b337a5d3fb1124"
     },
     {
       "path": "lib/gmail.php",
