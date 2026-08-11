@@ -15,7 +15,12 @@ function buildVehicleKnowledgeText($vehicle)
         'first_registration' => 'Erstzulassung',
         'power' => 'Leistung',
         'engine' => 'Motor',
-        'transmission' => 'Getriebe'
+        'fuel' => 'Kraftstoff',
+        'transmission' => 'Getriebe',
+        'emissions_class' => 'Abgasnorm',
+        'color' => 'Farbe',
+        'doors' => 'Türen',
+        'seats' => 'Sitzplätze'
     );
 
     foreach ($simple as $key => $label) {
@@ -29,6 +34,7 @@ function buildVehicleKnowledgeText($vehicle)
         'condition' => 'Zustand',
         'service' => 'Service/Wartung',
         'equipment' => 'Ausstattung',
+        'terminology' => 'Fahrzeugbegriffe/Synonyme',
         'tires' => 'Reifen/Raeder',
         'sales_rules' => 'Verkaufsregeln'
     );
@@ -289,7 +295,47 @@ function geminiGenerateReply($config, $vehicle, $conversation, $replyHint)
         $model = trim($config['gemini_model']);
     }
 
-    $history = buildBuyerHistoryForAI($conversation, 5);
+    $messages = isset($conversation['messages']) && is_array($conversation['messages'])
+        ? $conversation['messages']
+        : array();
+
+    $latestMessage = count($messages) > 0
+        ? $messages[count($messages) - 1]
+        : null;
+
+    $currentMessage = '(keine aktuelle Nachricht erkannt)';
+
+    if (is_array($latestMessage)) {
+        $safeCurrent = isset($latestMessage['text'])
+            ? sanitizeForAI($latestMessage['text'])
+            : '';
+        $safeCurrent = redactKnownNameForAI(
+            $safeCurrent,
+            isset($conversation['name']) ? $conversation['name'] : ''
+        );
+
+        $currentMessage = '[' .
+            (isset($latestMessage['date']) ? $latestMessage['date'] : '') .
+            '] ' . $safeCurrent;
+    }
+
+    /*
+     * Aeltere Nachrichten bleiben als Kontext erhalten, werden aber bewusst
+     * getrennt von der aktuellen Frage uebergeben. So beantwortet Gemini
+     * bei Folgefragen nicht noch einmal die erste Anfrage.
+     */
+    $olderConversation = $conversation;
+    if (isset($olderConversation['messages']) && is_array($olderConversation['messages'])) {
+        if (count($olderConversation['messages']) > 0) {
+            array_pop($olderConversation['messages']);
+        }
+    }
+
+    $history = buildBuyerHistoryForAI($olderConversation, 4);
+    if (trim($history) == '') {
+        $history = '(keine älteren Käufernachrichten)';
+    }
+
     $vehicleText = buildVehicleKnowledgeText($vehicle);
 
     $replyHint = trim($replyHint);
@@ -318,12 +364,17 @@ function geminiGenerateReply($config, $vehicle, $conversation, $replyHint)
         "WICHTIGE REGELN:\n" .
         "- Verwende ausschliesslich die unten angegebenen Fahrzeugdaten.\n" .
         "- Erfinde keine Fakten, Preise, Wartungen, Termine oder Zusagen.\n" .
+        "- Die AKTUELLE NACHRICHT hat absolute Priorität. Beantworte genau die neue Frage bzw. die neuen Punkte daraus.\n" .
+        "- AELTERE KAEUFERNACHRICHTEN dienen nur als Kontext. Gehe davon aus, dass deren damalige Fragen bereits beantwortet wurden. Wiederhole keine alten Antworten, ausser die aktuelle Nachricht greift einen Punkt ausdrücklich erneut auf.\n" .
+        "- Bei einer kurzen Folgefrage antworte kurz auf genau diese Folgefrage und rolle nicht das gesamte bisherige Gespräch erneut auf.\n" .
+        "- Beachte die unter FAHRZEUGBEGRIFFE/SYNONYME angegebenen Gleichsetzungen. Wenn ein Käufer z. B. 'Schiebedach' schreibt, obwohl in den Fahrzeugdaten 'Panorama-Schiebedach' steht, ist damit dieselbe vorhandene Ausstattung gemeint.\n" .
         "- Halte Inspektion, HU/AU, Reparaturen und andere Wartungsereignisse strikt auseinander. Eine HU/AU ist keine Inspektion.\n" .
         "- Ordne jedes Ereignis exakt dem in den Fahrzeugdaten genannten Datum zu. Verknuepfe getrennte Ereignisse nicht so, dass ein falscher zeitlicher Zusammenhang entsteht.\n" .
         "- Fuer dieses Fahrzeug gilt ausdruecklich: letzte Inspektion Mai 2024; HU/AU separat im Mai 2026; im Jahr 2026 fand keine Inspektion statt.\n" .
         "- Du antwortest IMMER aus Sicht des Fahrzeugbesitzers und privaten Verkäufers in der Ich- oder Wir-Form.\n" .
         "- Schreibe niemals 'der Verkäufer', 'der Besitzer', 'der Anbieter' oder ähnliche Formulierungen über die eigene Person.\n" .
         "- Wenn eine Frage mit den Fahrzeugdaten nicht sicher beantwortbar ist, sage das in genau EINEM kurzen natürlichen Satz in der Ich-Form. Verwende nicht zwei gleichbedeutende Formulierungen hintereinander.\n" .
+        "- Wenn nur ein Detail der Frage unbekannt ist, beantworte zuerst alle sicher bekannten Teile und nenne nur für den tatsächlich unbekannten Teil knapp, dass ich das prüfen muss.\n" .
         "- Beantworte vor allem die tatsächlich gestellten Fragen und wiederhole nicht unnötig sämtliche Fahrzeugdaten.\n" .
         "- Wenn der Interessent eine Begründung für einen Wunsch nennt, gehe kurz und konkret auf diese Begründung ein, statt sie zu ignorieren.\n" .
         "- Wenn der Interessent zu WhatsApp, SMS oder einer anderen externen schriftlichen Kommunikation wechseln möchte, zeige Verständnis, erkläre aber freundlich, dass ich selbst mehrere Anfragen bekomme und den Schriftverkehr zunächst zur besseren Zuordnung und aus Sicherheitsgründen hier über mobile.de/Kleinanzeigen halten möchte. Erwähne bei Bedarf knapp, dass mobile.de dazu rät, bei einem Wechsel auf externe Messenger vorsichtig zu sein. Klinge dabei niemals misstrauisch gegenüber dem konkreten Interessenten. Für einen späteren konkreten Besichtigungstermin oder ein Telefonat darf eine offenere Formulierung verwendet werden, aber keine Kontaktdaten erfinden.\n" .
@@ -339,10 +390,12 @@ function geminiGenerateReply($config, $vehicle, $conversation, $replyHint)
         "- Bei Preisfragen keinen grossen Rabatt anbieten. Besichtigung zuerst, Preis nur in vernünftigem Rahmen verhandelbar.\n" .
         "- Gib ausschliesslich den fertigen Antworttext aus, keine Erklaerung.\n\n" .
         $vehicleText . "\n\n" .
-        "BISHERIGE NACHRICHTEN DES INTERESSENTEN (personenbezogene Kontaktdaten wurden entfernt):\n" .
+        "AKTUELLE NACHRICHT DES INTERESSENTEN - DIESE JETZT BEANTWORTEN:\n" .
+        $currentMessage . "\n\n" .
+        "AELTERE KAEUFERNACHRICHTEN - NUR KONTEXT, NICHT ERNEUT BEANTWORTEN:\n" .
         $history .
         $hintBlock . "\n\n" .
-        "Formuliere jetzt die passende Antwort auf die letzte Nachricht.";
+        "Formuliere jetzt ausschließlich die passende Antwort auf die aktuelle Nachricht.";
 
     $requestData = array(
         'model' => $model,
