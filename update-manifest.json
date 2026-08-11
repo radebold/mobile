@@ -1,7 +1,7 @@
 {
-  "version": "2.10.0",
-  "released": "2026-08-09",
-  "notes": "Antworten können nach Prüfung jetzt direkt aus der Verkaufszentrale über Gmail versendet werden. Nach erfolgreichem Versand wird das Gespräch automatisch als beantwortet markiert und archiviert. WICHTIG: Für den Direktversand muss die aktuelle gmail-bridge.gs einmal im bestehenden Google-Apps-Script-Projekt als neue Version bereitgestellt werden.",
+  "version": "2.10.1",
+  "released": "2026-08-11",
+  "notes": "Die nicht verifizierte Angabe 'Matrix-LED-Licht' wurde aus der Fahrzeug-Wissensbasis entfernt. Gemini verwendet diese Ausstattung künftig nicht mehr in Antworten, solange sie nicht sicher bestätigt ist.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -14,11 +14,11 @@
     },
     {
       "path": "vehicle.php",
-      "blob_sha": "8c6b64eb3ff99ef410ca8b46bb5031564ccb60ba"
+      "blob_sha": "47e198aeb44a9da92a2a72dcc530c7d53934c1ed"
     },
     {
       "path": "VERSION",
-      "blob_sha": "10c2c0c3d62137a46deee939bc5e6ad677a518c5"
+      "blob_sha": "8bbb6e406a7332cc0a8793e19dae32dc6fc1c0d4"
     },
     {
       "path": "assets/app.css",
