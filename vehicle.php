@@ -16,7 +16,7 @@ $vehicle = array(
     'seller_name' => 'Thomas Radebold',
 
     'title' => 'Volkswagen VW Sharan 2.0 TDI 177 PS Highline-Ausstattung',
-    'price' => '18.200 EUR',
+    'price' => '17.490 EUR',
     'mileage' => 'ca. 138.000 km',
     'first_registration' => '04/2015',
     'power' => '177 PS',
