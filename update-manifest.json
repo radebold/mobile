@@ -1,7 +1,7 @@
 {
-  "version": "2.12.0",
+  "version": "2.12.1",
   "released": "2026-08-11",
-  "notes": "Die Fahrzeug-Wissensbasis wurde systematisch erweitert: exaktes Erstzulassungsdatum, 130 kW/177 PS, 1.968 cm³, Diesel, 6-Gang-DSG, Euro 5, Oryxweiß, 5 Türen, 7 Sitze sowie die Verbrauchs- und CO₂-Werte aus dem ursprünglichen Fahrzeugdatenblatt. Ausstattung und Synonyme wurden vervollständigt, und Gemini erhält jetzt auch diese technischen Daten ausdrücklich als Wissensbasis.",
+  "notes": "Die Oberfläche wurde für iPad/Safari verbessert. Die Seitenhöhe verwendet jetzt die tatsächlich sichtbare Browserhöhe (dvh), die Sidebar bleibt vollständig im sichtbaren Bereich und wird bei geringerer Höhe kompakter dargestellt bzw. bei Bedarf intern scrollbar.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -18,11 +18,11 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "d8b698973a4918eb7d323228992b517d7c249f4a"
+      "blob_sha": "3cf561c0b67cfad5880cefd2c3cd5f96dee2af2f"
     },
     {
       "path": "assets/app.css",
-      "blob_sha": "e968a95adf0472c7011792dee345245d6d1f96ba"
+      "blob_sha": "f9bc3cdd173ce5cef1b9e3db6549afc7fbbe6495"
     },
     {
       "path": "assets/app.js",
