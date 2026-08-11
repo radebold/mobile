@@ -15,6 +15,7 @@ function buildVehicleKnowledgeText($vehicle)
         'first_registration' => 'Erstzulassung',
         'power' => 'Leistung',
         'engine' => 'Motor',
+        'displacement' => 'Hubraum',
         'fuel' => 'Kraftstoff',
         'transmission' => 'Getriebe',
         'emissions_class' => 'Abgasnorm',
@@ -30,6 +31,7 @@ function buildVehicleKnowledgeText($vehicle)
     }
 
     $sections = array(
+        'technical_data' => 'Technische Daten / Verbrauch',
         'ownership' => 'Besitz/Historie',
         'condition' => 'Zustand',
         'service' => 'Service/Wartung',
