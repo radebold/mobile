@@ -1,9 +1,10 @@
 {
-  "version": "2.13.1",
+  "version": "2.13.2",
   "released": "2026-08-13",
-  "notes": "WhatsApp-Status korrigiert.",
+  "notes": "WhatsApp-Doppelmeldungen behoben: Der komplette automatische Benachrichtigungs- und Update-Lauf ist jetzt gegen parallele Scheduler-Aufrufe gesperrt. Dadurch können sich gleichzeitig laufende Prüfungen nicht mehr gegenseitig den Seen-/Update-Status überschreiben und bereits versendete Nachrichten erneut auslösen.",
+  "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
-    {"path": "functions.php", "blob_sha": "71e6df01db699f06e28ad701c9728a873507a573"},
-    {"path": "VERSION", "blob_sha": "94f15e9cc3098e7893d6d07fb64edec4886c6548"}
+    {"path": "lib/update.php", "blob_sha": "96fed48f84d1586118b0d5392f205772533f00ac"},
+    {"path": "VERSION", "blob_sha": "0e83a9a9c4e65b67bb686a9952e08167adcfeef3"}
   ]
 }
