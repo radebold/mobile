@@ -362,51 +362,270 @@ function initDirectGmailSendButtons() {
     }
 }
 
+function ensureArchiveUiStyles() {
+    if (document.getElementById('archive-ui-styles')) return;
+
+    var style = document.createElement('style');
+    style.id = 'archive-ui-styles';
+    style.textContent =
+        '.archive-backdrop{position:fixed;inset:0;z-index:9999;background:rgba(15,17,23,.48);display:flex;align-items:center;justify-content:center;padding:20px}' +
+        '.archive-dialog{width:min(760px,100%);max-height:min(82dvh,760px);overflow:hidden;border-radius:18px;background:#fff;box-shadow:0 28px 80px rgba(0,0,0,.28);display:flex;flex-direction:column}' +
+        '.archive-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding:18px 20px 14px;border-bottom:1px solid #eceef2}' +
+        '.archive-dialog-title{font-size:18px;font-weight:800;color:#191d26}' +
+        '.archive-dialog-sub{margin-top:4px;font-size:11px;color:#7d8492}' +
+        '.archive-close{appearance:none;border:0;background:#f1f2f5;color:#555d69;width:34px;height:34px;border-radius:10px;cursor:pointer;font-size:18px}' +
+        '.archive-dialog-body{overflow:auto;padding:14px 16px 18px}' +
+        '.archive-info{padding:11px 12px;border-radius:11px;background:#f7f8fa;color:#656d7a;font-size:11px;line-height:1.5;margin-bottom:11px}' +
+        '.archive-item{border:1px solid #e7e9ee;border-radius:13px;padding:13px 14px;margin-top:10px;background:#fff}' +
+        '.archive-item-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}' +
+        '.archive-item-name{font-size:13px;font-weight:800;color:#222731}' +
+        '.archive-item-date{font-size:9px;color:#959ba6;white-space:nowrap}' +
+        '.archive-item-subject{margin-top:6px;font-size:10px;color:#747b88;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+        '.archive-item-text{margin-top:9px;padding:10px 11px;border-radius:10px;background:#f8f9fb;color:#343a44;font-size:11px;line-height:1.45;white-space:pre-wrap;max-height:120px;overflow:auto}' +
+        '.archive-item-actions{margin-top:10px;display:flex;justify-content:flex-end}' +
+        '.archive-reopen{appearance:none;border:0;border-radius:9px;background:#5b5bd6;color:#fff;min-height:36px;padding:0 12px;font-size:10px;font-weight:800;cursor:pointer}' +
+        '.archive-reopen:disabled{opacity:.5;cursor:wait}' +
+        '.archive-empty{padding:30px 15px;text-align:center;color:#7b8290;font-size:12px}' +
+        '@media(max-width:680px){.archive-backdrop{padding:8px}.archive-dialog{max-height:92dvh;border-radius:15px}.archive-dialog-head{padding:14px}.archive-dialog-body{padding:10px}}';
+    document.head.appendChild(style);
+}
+
+function closeArchiveDialog() {
+    var backdrop = document.getElementById('archive-backdrop');
+    if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+}
+
+function reopenArchiveConversation(key, csrf, button) {
+    if (!window.fetch || !window.FormData) return;
+
+    var data = new FormData();
+    data.append('conversation_key', key);
+    data.append('csrf', csrf);
+
+    var oldText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Wird geöffnet …';
+
+    fetch('functions.php?archive_reopen=1&_=' + Date.now(), {
+        method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: data
+    })
+        .then(function (response) {
+            return response.json().then(function (payload) {
+                if (!response.ok || !payload.ok) {
+                    throw new Error(payload && payload.error ? payload.error : 'HTTP ' + response.status);
+                }
+                return payload;
+            });
+        })
+        .then(function (payload) {
+            window.location.href = payload.url || 'index.php';
+        })
+        .catch(function (error) {
+            button.disabled = false;
+            button.textContent = oldText;
+            window.alert(error.message || 'Das Gespräch konnte nicht wieder geöffnet werden.');
+        });
+}
+
+function renderArchiveDialog(status, data) {
+    ensureArchiveUiStyles();
+    closeArchiveDialog();
+
+    var backdrop = document.createElement('div');
+    backdrop.className = 'archive-backdrop';
+    backdrop.id = 'archive-backdrop';
+
+    var dialog = document.createElement('div');
+    dialog.className = 'archive-dialog';
+
+    var head = document.createElement('div');
+    head.className = 'archive-dialog-head';
+
+    var headText = document.createElement('div');
+    var title = document.createElement('div');
+    title.className = 'archive-dialog-title';
+    title.textContent = status === 'erledigt' ? 'Kein Interesse' : 'Beantwortete Gespräche';
+
+    var sub = document.createElement('div');
+    sub.className = 'archive-dialog-sub';
+    sub.textContent = String(data.inbox_count || 0) + ' von ' + String(data.total_count || 0) + ' liegen noch im Gmail-Posteingang';
+
+    headText.appendChild(title);
+    headText.appendChild(sub);
+
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'archive-close';
+    close.textContent = '×';
+    close.onclick = closeArchiveDialog;
+
+    head.appendChild(headText);
+    head.appendChild(close);
+
+    var body = document.createElement('div');
+    body.className = 'archive-dialog-body';
+
+    var info = document.createElement('div');
+    info.className = 'archive-info';
+    info.textContent = 'Gespräche können hier wieder geöffnet werden, wenn die zugehörige mobile.de-Mail noch im Gmail-Posteingang liegt. Bereits archivierte oder gelöschte Mails bitte in Gmail zuerst zurück in den Posteingang verschieben.';
+    body.appendChild(info);
+
+    var items = data.items || [];
+
+    if (!items.length) {
+        var empty = document.createElement('div');
+        empty.className = 'archive-empty';
+        empty.textContent = data.total_count > 0
+            ? 'Keines der ausgeblendeten Gespräche liegt aktuell im Gmail-Posteingang.'
+            : 'Hier gibt es aktuell keine Gespräche.';
+        body.appendChild(empty);
+    }
+
+    for (var i = 0; i < items.length; i++) {
+        (function (item) {
+            var card = document.createElement('div');
+            card.className = 'archive-item';
+
+            var itemHead = document.createElement('div');
+            itemHead.className = 'archive-item-head';
+
+            var name = document.createElement('div');
+            name.className = 'archive-item-name';
+            name.textContent = item.name || 'Interessent';
+
+            var date = document.createElement('div');
+            date.className = 'archive-item-date';
+            date.textContent = item.date || '';
+
+            itemHead.appendChild(name);
+            itemHead.appendChild(date);
+            card.appendChild(itemHead);
+
+            if (item.subject) {
+                var subject = document.createElement('div');
+                subject.className = 'archive-item-subject';
+                subject.textContent = item.subject;
+                card.appendChild(subject);
+            }
+
+            var text = document.createElement('div');
+            text.className = 'archive-item-text';
+            text.textContent = item.text || '(kein Nachrichtentext)';
+            card.appendChild(text);
+
+            var actions = document.createElement('div');
+            actions.className = 'archive-item-actions';
+
+            var reopen = document.createElement('button');
+            reopen.type = 'button';
+            reopen.className = 'archive-reopen';
+            reopen.textContent = 'Wieder öffnen und beantworten';
+            reopen.onclick = function () {
+                reopenArchiveConversation(item.key, data.csrf || '', reopen);
+            };
+
+            actions.appendChild(reopen);
+            card.appendChild(actions);
+            body.appendChild(card);
+        })(items[i]);
+    }
+
+    dialog.appendChild(head);
+    dialog.appendChild(body);
+    backdrop.appendChild(dialog);
+
+    backdrop.onclick = function (event) {
+        if (event.target === backdrop) closeArchiveDialog();
+    };
+
+    document.body.appendChild(backdrop);
+}
+
+function openArchiveDialog(status) {
+    if (!window.fetch) return;
+
+    ensureArchiveUiStyles();
+    closeArchiveDialog();
+
+    var loading = document.createElement('div');
+    loading.className = 'archive-backdrop';
+    loading.id = 'archive-backdrop';
+
+    var loadingDialog = document.createElement('div');
+    loadingDialog.className = 'archive-dialog';
+
+    var loadingBody = document.createElement('div');
+    loadingBody.className = 'archive-empty';
+    loadingBody.textContent = 'Archiv wird geladen …';
+    loadingDialog.appendChild(loadingBody);
+    loading.appendChild(loadingDialog);
+    document.body.appendChild(loading);
+
+    fetch('functions.php?archive_list=' + encodeURIComponent(status) + '&_=' + Date.now(), {
+        credentials: 'same-origin',
+        cache: 'no-store'
+    })
+        .then(function (response) {
+            return response.json().then(function (payload) {
+                if (!response.ok || !payload.ok) {
+                    throw new Error(payload && payload.error ? payload.error : 'HTTP ' + response.status);
+                }
+                return payload;
+            });
+        })
+        .then(function (payload) {
+            renderArchiveDialog(status, payload);
+        })
+        .catch(function (error) {
+            closeArchiveDialog();
+            window.alert('Archiv konnte nicht geladen werden:\n\n' + (error.message || error));
+        });
+}
+
 function initArchiveNavigation() {
     var items = document.querySelectorAll('.side-item');
 
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
-
-        if (item.tagName && String(item.tagName).toLowerCase() === 'a') {
-            continue;
-        }
-
         var label = item.querySelector('span');
         if (!label) continue;
 
         var text = String(label.textContent || '').replace(/^\s+|\s+$/g, '');
-        var target = '';
+        var status = '';
 
         if (text === 'Beantwortet') {
-            target = 'archive.php?view=beantwortet';
+            status = 'beantwortet';
         } else if (text === 'Kein Interesse') {
-            target = 'archive.php?view=erledigt';
+            status = 'erledigt';
         }
 
-        if (!target) continue;
+        if (!status) continue;
 
         item.style.cursor = 'pointer';
-        item.setAttribute('role', 'link');
+        item.setAttribute('role', 'button');
         item.setAttribute('tabindex', '0');
         item.title = text + ' anzeigen';
 
-        item.onclick = (function (url) {
-            return function () {
-                window.location.href = url;
+        item.onclick = (function (archiveStatus) {
+            return function (event) {
+                if (event && event.preventDefault) event.preventDefault();
+                openArchiveDialog(archiveStatus);
             };
-        })(target);
+        })(status);
 
-        item.onkeydown = (function (url) {
+        item.onkeydown = (function (archiveStatus) {
             return function (event) {
                 event = event || window.event;
                 var key = event.key || event.keyCode;
                 if (key === 'Enter' || key === ' ' || key === 13 || key === 32) {
                     if (event.preventDefault) event.preventDefault();
-                    window.location.href = url;
+                    openArchiveDialog(archiveStatus);
                 }
             };
-        })(target);
+        })(status);
     }
 }
 
