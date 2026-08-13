@@ -631,6 +631,16 @@ function processMobileWhatsAppNotifications($config, $conversations, $testMode)
         saveMobileNotifyState($state);
     }
 
+    /*
+     * Ein alter transienter Versandfehler darf nicht dauerhaft als aktueller
+     * WhatsApp-Fehler angezeigt werden. Wenn der aktuelle Scheduler-Lauf
+     * erfolgreich abgeschlossen wurde, ist die Verbindung wieder gesund –
+     * auch wenn in diesem Lauf keine neue Käufernachricht zu versenden war.
+     */
+    if ($result['ok']) {
+        $state['last_error'] = '';
+    }
+
     saveMobileNotifyState($state);
     return $result;
 }
