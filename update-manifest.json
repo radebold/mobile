@@ -1,52 +1,9 @@
 {
-  "version": "2.13.0",
+  "version": "2.13.1",
   "released": "2026-08-13",
-  "notes": "Beim Formulieren einer Antwort gibt es jetzt optional den Schalter 'Zahlungshinweis anhängen'. Ist er aktiv, wird ein fester Hinweis zu Echtzeit-/Sofortüberweisung, vorheriger Prüfung des Banklimits sowie dem Ausschluss von Bargeld und Teilzahlungen automatisch vor der Grußformel in den Antwortentwurf eingesetzt. Der Hinweis wird bewusst technisch ergänzt und nicht von Gemini umformuliert.",
-  "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
+  "notes": "WhatsApp-Status korrigiert.",
   "files": [
-    {
-      "path": "index.php",
-      "blob_sha": "d774c94d205713909e4df8cd8e1f2221897250b4"
-    },
-    {
-      "path": "functions.php",
-      "blob_sha": "89c90fe332ac1780a49da5f68380f87504523e58"
-    },
-    {
-      "path": "vehicle.php",
-      "blob_sha": "0bfd023b819dbfd3f64cb25fd98881da610fff75"
-    },
-    {
-      "path": "VERSION",
-      "blob_sha": "fb2c0766b7cc222e3f7c0296bcd6cbf144995f36"
-    },
-    {
-      "path": "assets/app.css",
-      "blob_sha": "f9bc3cdd173ce5cef1b9e3db6549afc7fbbe6495"
-    },
-    {
-      "path": "assets/app.js",
-      "blob_sha": "69d25838d4f920330ed6de039604c728712c6208"
-    },
-    {
-      "path": "lib/mail.php",
-      "blob_sha": "c635ba9fb011645516073bccbb386fadc89c6754"
-    },
-    {
-      "path": "lib/ai.php",
-      "blob_sha": "476e7766ea321e335cec5b1d33329fdb4482049b"
-    },
-    {
-      "path": "lib/gmail.php",
-      "blob_sha": "2ef02c9de60e02254104388e1e78a911b5b8ac28"
-    },
-    {
-      "path": "lib/state.php",
-      "blob_sha": "e5325f822be5d284221808716d1b0b2796aa89de"
-    },
-    {
-      "path": "lib/update.php",
-      "blob_sha": "5c2904f7d7b10f74bae1a8b3cfe4b12ec8c1d433"
-    }
+    {"path": "functions.php", "blob_sha": "71e6df01db699f06e28ad701c9728a873507a573"},
+    {"path": "VERSION", "blob_sha": "94f15e9cc3098e7893d6d07fb64edec4886c6548"}
   ]
 }
