@@ -799,12 +799,127 @@ function isPrivateNetworkRequest()
 }
 
 
+function getMobileArchiveInboxItems($config, $wantedStatus)
+{
+    $wantedStatus = $wantedStatus == 'erledigt' ? 'erledigt' : 'beantwortet';
+    $state = loadAppState();
+    $mail = loadMobileConversations($config);
+
+    $result = array(
+        'ok' => false,
+        'status' => $wantedStatus,
+        'total_count' => 0,
+        'inbox_count' => 0,
+        'items' => array(),
+        'error' => ''
+    );
+
+    if (!$mail['ok']) {
+        $result['error'] = 'Gmail: ' . $mail['error'];
+        return $result;
+    }
+
+    if (isset($state['conversations']) && is_array($state['conversations'])) {
+        foreach ($state['conversations'] as $storedConversation) {
+            if (!is_array($storedConversation) || !isset($storedConversation['status'])) {
+                continue;
+            }
+
+            if (validStatus($storedConversation['status']) == $wantedStatus) {
+                $result['total_count']++;
+            }
+        }
+    }
+
+    foreach ($mail['conversations'] as $key => $conversation) {
+        $local = getConversationState($state, $key);
+        $status = isset($local['status']) && $local['status'] != ''
+            ? validStatus($local['status'])
+            : ($conversation['unread'] ? 'neu' : 'offen');
+
+        if ($status != $wantedStatus) {
+            continue;
+        }
+
+        $latest = getLatestMessage($conversation);
+        $result['items'][] = array(
+            'key' => $key,
+            'name' => isset($conversation['name']) && trim($conversation['name']) != '' ? trim($conversation['name']) : 'Interessent',
+            'subject' => isset($conversation['subject']) ? trim($conversation['subject']) : '',
+            'date' => is_array($latest) && isset($latest['date']) ? $latest['date'] : '',
+            'text' => is_array($latest) && isset($latest['text']) ? $latest['text'] : '',
+            'message_count' => isset($conversation['messages']) && is_array($conversation['messages']) ? count($conversation['messages']) : 0
+        );
+    }
+
+    $result['inbox_count'] = count($result['items']);
+    $result['ok'] = true;
+    return $result;
+}
+
+
+function reopenMobileArchiveConversation($config, $key)
+{
+    $result = array('ok' => false, 'error' => '', 'url' => '');
+    $key = preg_replace('/[^a-f0-9]/', '', strtolower(trim($key)));
+
+    if ($key == '') {
+        $result['error'] = 'Das Gespräch konnte nicht zugeordnet werden.';
+        return $result;
+    }
+
+    $mail = loadMobileConversations($config);
+    if (!$mail['ok']) {
+        $result['error'] = 'Gmail: ' . $mail['error'];
+        return $result;
+    }
+
+    if (!isset($mail['conversations'][$key])) {
+        $result['error'] = 'Die Eingangsmail liegt nicht im Gmail-Posteingang. Bitte die betreffende Mail in Gmail zuerst wieder in den Posteingang verschieben.';
+        return $result;
+    }
+
+    $state = loadAppState();
+    setConversationState(
+        $state,
+        $key,
+        array(
+            'status' => 'offen',
+            'draft' => '',
+            'draft_updated' => '',
+            'draft_for_message_key' => '',
+            'draft_for_message_date' => '',
+            'reply_hint' => '',
+            'answered_at' => '',
+            'answered_at_ts' => 0,
+            'no_interest_at' => '',
+            'no_interest_at_ts' => 0
+        )
+    );
+
+    if (!saveAppState($state)) {
+        $result['error'] = 'Der lokale Gesprächsstatus konnte nicht gespeichert werden.';
+        return $result;
+    }
+
+    $result['ok'] = true;
+    $result['url'] = 'index.php?conversation=' . rawurlencode($key) . '#c-' . rawurlencode($key);
+    return $result;
+}
+
+
 /*
  * =========================================================
  * Standalone-Aufruf für Synology Aufgabenplaner und UI
  *
  * UI Status (nur aus privatem Netz):
  *   /mobile/functions.php?status=1
+ *
+ * UI Archivliste:
+ *   /mobile/functions.php?archive_list=beantwortet
+ *
+ * UI Archiv wieder öffnen (POST + Session-CSRF):
+ *   /mobile/functions.php?archive_reopen=1
  *
  * UI Test (nur aus privatem Netz, feste konfigurierte Zielnummer):
  *   /mobile/functions.php?ui_test=1
@@ -833,6 +948,81 @@ if (
     }
 
     require $configFile;
+
+    if (isset($_GET['archive_list'])) {
+        if (!isPrivateNetworkRequest()) {
+            http_response_code(403);
+            echo json_encode(array('ok' => false, 'error' => 'Archiv nur im privaten Netz verfügbar.'));
+            exit;
+        }
+
+        if (session_id() == '') {
+            @session_start();
+        }
+
+        if (!isset($_SESSION['mobile_csrf']) || $_SESSION['mobile_csrf'] == '') {
+            $_SESSION['mobile_csrf'] = sha1(uniqid(mt_rand(), true));
+        }
+
+        $wantedStatus = $_GET['archive_list'] == 'erledigt' ? 'erledigt' : 'beantwortet';
+        $archiveData = getMobileArchiveInboxItems($config, $wantedStatus);
+        $archiveData['csrf'] = $_SESSION['mobile_csrf'];
+
+        if (!$archiveData['ok']) {
+            http_response_code(500);
+        }
+
+        echo json_encode(
+            $archiveData,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        exit;
+    }
+
+    if (isset($_GET['archive_reopen']) && $_GET['archive_reopen'] == '1') {
+        if (!isPrivateNetworkRequest()) {
+            http_response_code(403);
+            echo json_encode(array('ok' => false, 'error' => 'Archiv nur im privaten Netz verfügbar.'));
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] != 'POST') {
+            http_response_code(405);
+            echo json_encode(array('ok' => false, 'error' => 'Nur POST ist erlaubt.'));
+            exit;
+        }
+
+        if (session_id() == '') {
+            @session_start();
+        }
+
+        $expectedCsrf = isset($_SESSION['mobile_csrf']) ? strval($_SESSION['mobile_csrf']) : '';
+        $providedCsrf = isset($_POST['csrf']) ? strval($_POST['csrf']) : '';
+        $csrfOk = $expectedCsrf != '' && $providedCsrf != '' && (
+            function_exists('hash_equals')
+                ? hash_equals($expectedCsrf, $providedCsrf)
+                : ($expectedCsrf === $providedCsrf)
+        );
+
+        if (!$csrfOk) {
+            http_response_code(403);
+            echo json_encode(array('ok' => false, 'error' => 'Sicherheitsprüfung fehlgeschlagen. Seite bitte neu laden.'));
+            exit;
+        }
+
+        $key = isset($_POST['conversation_key']) ? $_POST['conversation_key'] : '';
+        $reopen = reopenMobileArchiveConversation($config, $key);
+
+        if (!$reopen['ok']) {
+            http_response_code(400);
+        }
+
+        echo json_encode(
+            $reopen,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        exit;
+    }
 
     /* Read-only Status für die Weboberfläche. */
     if (isset($_GET['status']) && $_GET['status'] == '1') {
