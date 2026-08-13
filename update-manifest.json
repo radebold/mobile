@@ -1,12 +1,16 @@
 {
-  "version": "2.12.1",
-  "released": "2026-08-11",
-  "notes": "Die Oberfläche wurde für iPad/Safari verbessert. Die Seitenhöhe verwendet jetzt die tatsächlich sichtbare Browserhöhe (dvh), die Sidebar bleibt vollständig im sichtbaren Bereich und wird bei geringerer Höhe kompakter dargestellt bzw. bei Bedarf intern scrollbar.",
+  "version": "2.12.2",
+  "released": "2026-08-13",
+  "notes": "Archivierte Portal-Status lassen sich jetzt gezielt wieder öffnen: Die Sidebar-Einträge 'Beantwortet' und 'Kein Interesse' führen zu einer Archivansicht. Gespräche, deren mobile.de-Mail noch im Gmail-Posteingang liegt, können mit 'Wieder öffnen und beantworten' zurück auf Offen gesetzt und direkt weiterbearbeitet werden. Liegt die Mail bereits im Gmail-Archiv oder Papierkorb, wird erklärt, dass sie zuerst wieder in den Posteingang verschoben werden muss.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
       "path": "index.php",
       "blob_sha": "d774c94d205713909e4df8cd8e1f2221897250b4"
+    },
+    {
+      "path": "archive.php",
+      "blob_sha": "7c24f399b48434f05e318d27f83cc829b3bc46a6"
     },
     {
       "path": "functions.php",
@@ -18,7 +22,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "3cf561c0b67cfad5880cefd2c3cd5f96dee2af2f"
+      "blob_sha": "371a952d65fad5dfc2313394e848d7127f4f848e"
     },
     {
       "path": "assets/app.css",
@@ -26,7 +30,7 @@
     },
     {
       "path": "assets/app.js",
-      "blob_sha": "99864221f40a0b28994dc001d9660dd6172070b0"
+      "blob_sha": "7c9e9de4d053d5e0d1d5226e1c147d1600986170"
     },
     {
       "path": "lib/mail.php",
@@ -46,7 +50,7 @@
     },
     {
       "path": "lib/update.php",
-      "blob_sha": "a43e820de23b99b2ebb4f2825fcf8527363a0d88"
+      "blob_sha": "5c2904f7d7b10f74bae1a8b3cfe4b12ec8c1d433"
     }
   ]
 }
