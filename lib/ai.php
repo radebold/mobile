@@ -340,6 +340,13 @@ function geminiGenerateReply($config, $vehicle, $conversation, $replyHint)
 
     $vehicleText = buildVehicleKnowledgeText($vehicle);
 
+    /*
+     * Interner UI-Marker für den festen Zahlungshinweis. Der Hinweis wird
+     * clientseitig deterministisch in den fertigen Entwurf eingesetzt und
+     * darf deshalb weder als persönlicher Hinweis noch als Gemini-Instruktion
+     * beim Modell landen.
+     */
+    $replyHint = str_replace('[[MOBILE_PAYMENT_NOTICE]]', '', $replyHint);
     $replyHint = trim($replyHint);
     $safeReplyHint = '';
 
