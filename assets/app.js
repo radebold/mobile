@@ -362,9 +362,58 @@ function initDirectGmailSendButtons() {
     }
 }
 
+function initArchiveNavigation() {
+    var items = document.querySelectorAll('.side-item');
+
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+
+        if (item.tagName && String(item.tagName).toLowerCase() === 'a') {
+            continue;
+        }
+
+        var label = item.querySelector('span');
+        if (!label) continue;
+
+        var text = String(label.textContent || '').replace(/^\s+|\s+$/g, '');
+        var target = '';
+
+        if (text === 'Beantwortet') {
+            target = 'archive.php?view=beantwortet';
+        } else if (text === 'Kein Interesse') {
+            target = 'archive.php?view=erledigt';
+        }
+
+        if (!target) continue;
+
+        item.style.cursor = 'pointer';
+        item.setAttribute('role', 'link');
+        item.setAttribute('tabindex', '0');
+        item.title = text + ' anzeigen';
+
+        item.onclick = (function (url) {
+            return function () {
+                window.location.href = url;
+            };
+        })(target);
+
+        item.onkeydown = (function (url) {
+            return function (event) {
+                event = event || window.event;
+                var key = event.key || event.keyCode;
+                if (key === 'Enter' || key === ' ' || key === 13 || key === 32) {
+                    if (event.preventDefault) event.preventDefault();
+                    window.location.href = url;
+                }
+            };
+        })(target);
+    }
+}
+
 function initMobileSalesCenter() {
     initWhatsAppSystemStatus();
     initDirectGmailSendButtons();
+    initArchiveNavigation();
 }
 
 if (document.readyState === 'loading') {
