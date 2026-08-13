@@ -629,10 +629,174 @@ function initArchiveNavigation() {
     }
 }
 
+function getPaymentNoticeMarker() {
+    return '[[MOBILE_PAYMENT_NOTICE]]';
+}
+
+function getPaymentNoticeText() {
+    return 'Für den Fall, dass Sie sich bei der Besichtigung direkt für das Fahrzeug entscheiden, noch ein Hinweis, den wir grundsätzlich jedem Interessenten vorab mitgeben: Wir übergeben das Fahrzeug ausschließlich nach bestätigtem Geldeingang per Echtzeit- bzw. Sofortüberweisung auf unserem Konto. Bitte prüfen Sie deshalb vorab Ihr Überweisungslimit und passen Sie es bei Bedarf an. Bargeld und Teilzahlungen akzeptieren wir nicht. Diesen Tipp haben wir von der Plattform übernommen; der Hinweis ist nicht persönlich gemeint.';
+}
+
+function ensurePaymentNoticeUiStyles() {
+    if (document.getElementById('payment-notice-ui-styles')) return;
+
+    var style = document.createElement('style');
+    style.id = 'payment-notice-ui-styles';
+    style.textContent =
+        '.payment-notice-option{margin-top:8px;padding:9px 10px;border:1px solid #e8e8f1;border-radius:10px;background:#fff}' +
+        '.payment-notice-label{display:flex;align-items:flex-start;gap:9px;cursor:pointer;color:#4a5060}' +
+        '.payment-notice-label input{margin:2px 0 0;flex:0 0 auto;width:16px;height:16px;accent-color:#5b5bd6}' +
+        '.payment-notice-copy{display:flex;min-width:0;flex-direction:column;gap:2px}' +
+        '.payment-notice-title{font-size:10px;font-weight:800;color:#414179}' +
+        '.payment-notice-sub{font-size:9px;line-height:1.35;color:#8b919d}' +
+        '.payment-notice-option.is-active{border-color:#ccccfa;background:#f9f9ff}';
+    document.head.appendChild(style);
+}
+
+function stripPaymentNoticeMarker(value) {
+    var marker = getPaymentNoticeMarker();
+    return String(value || '').split(marker).join('').replace(/^\s+|\s+$/g, '');
+}
+
+function insertPaymentNoticeIntoDraft(field) {
+    if (!field) return;
+
+    var notice = getPaymentNoticeText();
+    var text = String(field.value || '');
+    if (text.indexOf(notice) !== -1) return;
+
+    var signature = '\n\nViele Grüße\n';
+    var pos = text.lastIndexOf(signature);
+
+    if (pos !== -1) {
+        field.value = text.substring(0, pos).replace(/\s+$/g, '') + '\n\n' + notice + text.substring(pos);
+    } else {
+        field.value = text.replace(/\s+$/g, '') + '\n\n' + notice;
+    }
+}
+
+function removePaymentNoticeFromDraft(field) {
+    if (!field) return;
+
+    var notice = getPaymentNoticeText();
+    var text = String(field.value || '');
+    text = text.split('\n\n' + notice).join('');
+    text = text.split(notice + '\n\n').join('');
+    text = text.split(notice).join('');
+    field.value = text.replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+}
+
+function preparePaymentNoticeBeforeGenerate(form) {
+    if (!form) return;
+
+    var hint = form.querySelector('textarea[name="reply_hint"]');
+    var checkbox = form.querySelector('.payment-notice-checkbox');
+    if (!hint || !checkbox) return;
+
+    var clean = stripPaymentNoticeMarker(hint.value);
+    hint.value = clean;
+
+    if (checkbox.checked) {
+        hint.value = (clean ? clean + '\n' : '') + getPaymentNoticeMarker();
+    }
+}
+
+function initPaymentNoticeFlags() {
+    ensurePaymentNoticeUiStyles();
+
+    var forms = document.querySelectorAll('.compose-row form');
+
+    for (var i = 0; i < forms.length; i++) {
+        (function (form) {
+            if (form.getAttribute('data-payment-notice-ready') === '1') return;
+
+            var hint = form.querySelector('textarea[name="reply_hint"]');
+            var hintCard = form.querySelector('.hint-card');
+            if (!hint || !hintCard) return;
+
+            form.setAttribute('data-payment-notice-ready', '1');
+
+            var marker = getPaymentNoticeMarker();
+            var wasChecked = String(hint.value || '').indexOf(marker) !== -1;
+            hint.value = stripPaymentNoticeMarker(hint.value);
+
+            var option = document.createElement('div');
+            option.className = 'payment-notice-option' + (wasChecked ? ' is-active' : '');
+            option.title = getPaymentNoticeText();
+
+            var label = document.createElement('label');
+            label.className = 'payment-notice-label';
+
+            var checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'payment-notice-checkbox';
+            checkbox.checked = wasChecked;
+
+            var copy = document.createElement('span');
+            copy.className = 'payment-notice-copy';
+
+            var title = document.createElement('span');
+            title.className = 'payment-notice-title';
+            title.textContent = 'Zahlungshinweis anhängen';
+
+            var sub = document.createElement('span');
+            sub.className = 'payment-notice-sub';
+            sub.textContent = 'Echtzeitüberweisung · Banklimit vorab prüfen · kein Bargeld / keine Teilzahlung';
+
+            copy.appendChild(title);
+            copy.appendChild(sub);
+            label.appendChild(checkbox);
+            label.appendChild(copy);
+            option.appendChild(label);
+            hintCard.appendChild(option);
+
+            var card = form.closest ? form.closest('.thread-card') : null;
+            var draft = card ? card.querySelector('textarea[name="draft"]') : null;
+
+            if (wasChecked && draft) {
+                insertPaymentNoticeIntoDraft(draft);
+            }
+
+            checkbox.onchange = function () {
+                option.className = 'payment-notice-option' + (checkbox.checked ? ' is-active' : '');
+                if (draft) {
+                    if (checkbox.checked) {
+                        insertPaymentNoticeIntoDraft(draft);
+                    } else {
+                        removePaymentNoticeFromDraft(draft);
+                    }
+                }
+            };
+
+            form.addEventListener('submit', function () {
+                preparePaymentNoticeBeforeGenerate(form);
+            });
+        })(forms[i]);
+    }
+
+    /*
+     * Der vorhandene Button nutzt form.submit(), wodurch das normale submit-
+     * Event umgangen wird. Im Capture-Handler wird der Marker deshalb bereits
+     * vor dem Inline-Handler in das Feld geschrieben.
+     */
+    document.addEventListener('click', function (event) {
+        var target = event.target || event.srcElement;
+        if (!target) return;
+
+        var button = target.closest ? target.closest('.quick-actions .btn') : null;
+        if (!button) return;
+
+        var row = button.closest ? button.closest('.compose-row') : null;
+        var form = row ? row.querySelector('form') : null;
+        if (form) preparePaymentNoticeBeforeGenerate(form);
+    }, true);
+}
+
 function initMobileSalesCenter() {
     initWhatsAppSystemStatus();
     initDirectGmailSendButtons();
     initArchiveNavigation();
+    initPaymentNoticeFlags();
 }
 
 if (document.readyState === 'loading') {
