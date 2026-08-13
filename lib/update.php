@@ -2,6 +2,109 @@
 
 /* Modul: update.php */
 
+/*
+ * =========================================================
+ * Globaler Lock für den WhatsApp-/Update-Scheduler
+ * =========================================================
+ *
+ * functions.php schreibt sowohl den Seen-Status neuer Käufernachrichten als
+ * auch den Status der GitHub-Updateprüfung in dieselbe notify-state.json.
+ * Zwei überlappende Scheduler-Aufrufe können sich deshalb gegenseitig einen
+ * neueren Stand überschreiben und bereits versendete Meldungen erneut als
+ * "neu" erscheinen lassen.
+ *
+ * Der Lock wird absichtlich sehr früh gesetzt: update.php wird von
+ * functions.php bereits vor der eigentlichen Verarbeitung eingebunden. Damit
+ * umfasst der Lock den KOMPLETTEN Scheduler-Lauf inklusive Updateprüfung.
+ * Status- und Archiv-Lesezugriffe bleiben davon unberührt.
+ */
+function mobileUpdateReleaseNotifyCronLock($handle)
+{
+    if (is_resource($handle)) {
+        @flock($handle, LOCK_UN);
+        @fclose($handle);
+    }
+}
+
+
+function mobileUpdateAcquireNotifyCronLockEarly()
+{
+    if (
+        !isset($_SERVER['SCRIPT_FILENAME']) ||
+        basename($_SERVER['SCRIPT_FILENAME']) != 'functions.php'
+    ) {
+        return;
+    }
+
+    /* Reine Lese-/Archiv-Endpunkte dürfen parallel laufen. */
+    if (
+        isset($_GET['status']) ||
+        isset($_GET['archive_list']) ||
+        isset($_GET['archive_reopen'])
+    ) {
+        return;
+    }
+
+    $isCli = php_sapi_name() === 'cli';
+    $hasTokenRequest = isset($_GET['token']) ||
+        (isset($_SERVER['HTTP_X_MOBILE_TOKEN']) && trim($_SERVER['HTTP_X_MOBILE_TOKEN']) != '');
+    $isUiTest = isset($_GET['ui_test']) && $_GET['ui_test'] == '1';
+
+    /* Nur schreibende Benachrichtigungsaufrufe sperren. */
+    if (!$isCli && !$hasTokenRequest && !$isUiTest) {
+        return;
+    }
+
+    $lockPath = dirname(__DIR__) . '/data/notify-cron.lock';
+    $lockDir = dirname($lockPath);
+
+    if (!is_dir($lockDir)) {
+        @mkdir($lockDir, 0770, true);
+    }
+
+    $handle = @fopen($lockPath, 'c+');
+
+    /* Falls kein Lockfile möglich ist, den Dienst nicht komplett blockieren. */
+    if (!$handle) {
+        return;
+    }
+
+    if (!@flock($handle, LOCK_EX | LOCK_NB)) {
+        @fclose($handle);
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+
+        echo json_encode(
+            array(
+                'ok' => true,
+                'skipped' => true,
+                'reason' => 'notify_run_already_active',
+                'message' => 'Ein anderer Benachrichtigungslauf ist noch aktiv.'
+            ),
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        exit;
+    }
+
+    @ftruncate($handle, 0);
+    @rewind($handle);
+    @fwrite(
+        $handle,
+        'pid=' . (function_exists('getmypid') ? intval(getmypid()) : 0) .
+        ' started=' . date('Y-m-d H:i:s') . "\n"
+    );
+    @fflush($handle);
+
+    /* Resource bis zum Script-Ende offen halten; dann automatisch freigeben. */
+    $GLOBALS['mobile_notify_cron_lock_handle'] = $handle;
+    register_shutdown_function('mobileUpdateReleaseNotifyCronLock', $handle);
+}
+
+
+mobileUpdateAcquireNotifyCronLockEarly();
+
+
 function getGitHubUpdateManifestUrl($config)
 {
     if (
