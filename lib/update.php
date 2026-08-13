@@ -167,6 +167,7 @@ function isAllowedAutoUpdatePath($path)
 {
     $allowed = array(
         'index.php',
+        'archive.php',
         'functions.php',
         'vehicle.php',
         'VERSION',
