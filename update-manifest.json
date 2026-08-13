@@ -1,7 +1,7 @@
 {
   "version": "2.12.2",
   "released": "2026-08-13",
-  "notes": "Archivierte Portal-Status lassen sich jetzt gezielt wieder öffnen: Die Sidebar-Einträge 'Beantwortet' und 'Kein Interesse' führen zu einer Archivansicht. Gespräche, deren mobile.de-Mail noch im Gmail-Posteingang liegt, können mit 'Wieder öffnen und beantworten' zurück auf Offen gesetzt und direkt weiterbearbeitet werden. Liegt die Mail bereits im Gmail-Archiv oder Papierkorb, wird erklärt, dass sie zuerst wieder in den Posteingang verschoben werden muss.",
+  "notes": "Ausgeblendete Gespräche lassen sich jetzt direkt aus der Sidebar wieder öffnen. Ein Klick auf 'Beantwortet' oder 'Kein Interesse' zeigt die betreffenden Gespräche, deren mobile.de-Mail noch im Gmail-Posteingang liegt. Mit 'Wieder öffnen und beantworten' wird der Status auf Offen zurückgesetzt und das Gespräch sofort wieder in der Verkaufszentrale angezeigt. Liegt die Mail bereits im Gmail-Archiv oder Papierkorb, wird darauf hingewiesen, sie zuerst wieder in den Posteingang zu verschieben.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -9,12 +9,8 @@
       "blob_sha": "d774c94d205713909e4df8cd8e1f2221897250b4"
     },
     {
-      "path": "archive.php",
-      "blob_sha": "7c24f399b48434f05e318d27f83cc829b3bc46a6"
-    },
-    {
       "path": "functions.php",
-      "blob_sha": "f4c5a390a40753281a50e3418609262e01629a65"
+      "blob_sha": "89c90fe332ac1780a49da5f68380f87504523e58"
     },
     {
       "path": "vehicle.php",
@@ -30,7 +26,7 @@
     },
     {
       "path": "assets/app.js",
-      "blob_sha": "7c9e9de4d053d5e0d1d5226e1c147d1600986170"
+      "blob_sha": "28ee9d838ee278ac7638cb22295c4565b18f90e7"
     },
     {
       "path": "lib/mail.php",
