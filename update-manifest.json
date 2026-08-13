@@ -1,7 +1,7 @@
 {
-  "version": "2.12.2",
+  "version": "2.13.0",
   "released": "2026-08-13",
-  "notes": "Ausgeblendete Gespräche lassen sich jetzt direkt aus der Sidebar wieder öffnen. Ein Klick auf 'Beantwortet' oder 'Kein Interesse' zeigt die betreffenden Gespräche, deren mobile.de-Mail noch im Gmail-Posteingang liegt. Mit 'Wieder öffnen und beantworten' wird der Status auf Offen zurückgesetzt und das Gespräch sofort wieder in der Verkaufszentrale angezeigt. Liegt die Mail bereits im Gmail-Archiv oder Papierkorb, wird darauf hingewiesen, sie zuerst wieder in den Posteingang zu verschieben.",
+  "notes": "Beim Formulieren einer Antwort gibt es jetzt optional den Schalter 'Zahlungshinweis anhängen'. Ist er aktiv, wird ein fester Hinweis zu Echtzeit-/Sofortüberweisung, vorheriger Prüfung des Banklimits sowie dem Ausschluss von Bargeld und Teilzahlungen automatisch vor der Grußformel in den Antwortentwurf eingesetzt. Der Hinweis wird bewusst technisch ergänzt und nicht von Gemini umformuliert.",
   "base_url": "https://raw.githubusercontent.com/radebold/mobile/main/",
   "files": [
     {
@@ -18,7 +18,7 @@
     },
     {
       "path": "VERSION",
-      "blob_sha": "371a952d65fad5dfc2313394e848d7127f4f848e"
+      "blob_sha": "fb2c0766b7cc222e3f7c0296bcd6cbf144995f36"
     },
     {
       "path": "assets/app.css",
@@ -26,7 +26,7 @@
     },
     {
       "path": "assets/app.js",
-      "blob_sha": "28ee9d838ee278ac7638cb22295c4565b18f90e7"
+      "blob_sha": "69d25838d4f920330ed6de039604c728712c6208"
     },
     {
       "path": "lib/mail.php",
@@ -34,7 +34,7 @@
     },
     {
       "path": "lib/ai.php",
-      "blob_sha": "30f3e9a443caeeaf7d03f02b56b337a5d3fb1124"
+      "blob_sha": "476e7766ea321e335cec5b1d33329fdb4482049b"
     },
     {
       "path": "lib/gmail.php",
